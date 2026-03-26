@@ -1,5 +1,13 @@
 [build]
-  command = "./gradlew :composeApp:wasmJsBrowserDistribution"
+  command = """
+    mkdir -p android-sdk/cmdline-tools
+    wget -q -O cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11479570_latest.zip
+    unzip -q cmdline-tools.zip -d android-sdk/cmdline-tools
+    mv android-sdk/cmdline-tools/cmdline-tools android-sdk/cmdline-tools/latest
+    export ANDROID_HOME=$PWD/android-sdk
+    yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null
+    ./gradlew :composeApp:wasmJsBrowserDistribution --stacktrace --info
+  """
   publish = "composeApp/build/dist/wasmJs/productionExecutable"
 
 [build.environment]
