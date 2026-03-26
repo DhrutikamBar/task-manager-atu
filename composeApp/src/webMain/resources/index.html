@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JiraATU</title>
+    <link type="text/css" rel="stylesheet" href="styles.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Let Compose handle scrolling */
+        }
+        #ComposeTarget {
+            width: 100%;
+            height: 100%;
+        }
+
+
+        /* Make sure the loading spinner is centered if we use absolute positioning */
+        #loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1; /* Puts it behind the Compose UI once it loads */
+        }
+    </style>
+</head>
+<body>
+    <!-- Optional: Keep your loading spinner if you want, Compose will draw over it when ready -->
+    <div id="loading-spinner">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" role="presentation">
+            <circle cx="25" cy="25" r="20" stroke="#ccc" stroke-width="4" fill="none"/>
+            <circle cx="25" cy="25" r="20" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"
+                    stroke-dasharray="90 125">
+                <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
+                                  repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+
+    <!-- The Compose App will render inside this container -->
+    <div id="ComposeTarget"></div>
+
+    <script>
+        // This looks for that specific "Dismiss" button you found
+        setInterval(() => {
+            const dismissBtn = document.querySelector('button[aria-label="Dismiss"]');
+            if (dismissBtn) {
+                // Found it! Now find the red parent div and kill it
+                const overlay = dismissBtn.parentElement;
+                if (overlay) {
+                    overlay.style.display = 'none';
+                    overlay.remove();
+                    console.warn("Red Error Screen Blocked.");
+                }
+            }
+        }, 100); // Check 10 times per second
+    </script>
+
+    <script type="application/javascript" src="composeApp.js"></script>
+
+</body>
+</html>
