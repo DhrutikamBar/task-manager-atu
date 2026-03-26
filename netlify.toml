@@ -1,0 +1,6 @@
+[build]
+  command = "./gradlew :composeApp:wasmJsBrowserDistribution"
+  publish = "composeApp/build/dist/wasmJs/productionExecutable"
+
+[build.environment]
+  JAVA_VERSION = "17"
