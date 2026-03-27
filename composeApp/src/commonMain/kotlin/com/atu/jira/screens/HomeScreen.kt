@@ -11,12 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.model.Project
+import com.atu.jira.model.Ticket
 
 @Composable
 fun HomeScreen(
     onProjectsClick: (Project) -> Unit,
     onTasksClick: () -> Unit,
-    onAddProject: () -> Unit, // Added this
+    onTaskClick: (Ticket) -> Unit, 
+    onAddProject: () -> Unit,
     onLogout: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -36,11 +38,11 @@ fun HomeScreen(
         when (selectedTab) {
             0 -> ProjectListScreen(
                 onProjectClick = onProjectsClick,
-                onAddProject = onAddProject, // Pass here
+                onAddProject = onAddProject, 
                 onLogout = onLogout,
-                showTopBar = false // Hide nested TopBar
+                showTopBar = false 
             )
-            1 -> TaskListScreen()
+            1 -> TaskListScreen(onTicketClick = onTaskClick)
         }
     }
 }

@@ -5,8 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Close
@@ -28,9 +30,13 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.atu.jira.components.CommentShimmerItem
 import com.atu.jira.components.CommonTopBar
+import com.atu.jira.components.HistoryShimmerItem
+import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.LoadingUI
 import com.atu.jira.components.ResourceHandler
+import com.atu.jira.components.TicketShimmerItem
 import com.atu.jira.model.Project
 import com.atu.jira.model.Status
 import com.atu.jira.model.Ticket
@@ -42,6 +48,175 @@ import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+
+// --- Date Helpers ---
+fun formatEpochMillisToDate(millis: Long): String {
+    val daysSinceEpoch = millis / 86400000L
+    val z = daysSinceEpoch + 719468
+    val era = (if (z >= 0) z else z - 146096) / 146097
+    val doe = (z - era * 146097).toInt()
+    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    val y = (yoe + era * 400).toInt()
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    val mp = (5 * doy + 2) / 153
+    val d = doy - (153 * mp + 2) / 5 + 1
+    val m = mp + if (mp < 10) 3 else -9
+    val year = y + if (m <= 2) 1 else 0
+
+    val monthStr = m.toString().padStart(2, '0')
+    val dayStr = d.toString().padStart(2, '0')
+    return "$year-$monthStr-$dayStr"
+}
+
+fun parseDateToEpochMillis(dateStr: String): Long? {
+    if (dateStr.isBlank()) return null
+    try {
+        val parts = dateStr.split("-")
+        if (parts.size != 3) return null
+        val year = parts[0].toInt()
+        val month = parts[1].toInt()
+        val day = parts[2].toInt()
+
+        val a = (14 - month) / 12
+        val y = year + 4800 - a
+        val m = month + 12 * a - 3
+        val jdn = day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
+        val epochDays = jdn - 2440588
+        return epochDays * 86400000L
+    } catch (e: Exception) {
+        return null
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerField(
+    label: String,
+    selectedDate: String,
+    onDateSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val initialMillis = remember(selectedDate) { parseDateToEpochMillis(selectedDate) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+    Box {
+        JiraTextField(
+            value = selectedDate,
+            onValueChange = {},
+            label = label,
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        // Invisible clickable overlay to capture touch events
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Color.Transparent)
+                .clickable { expanded = true }
+        )
+    }
+
+    if (expanded) {
+        DatePickerDialog(
+            onDismissRequest = { expanded = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onDateSelected(formatEpochMillisToDate(millis))
+                    }
+                    expanded = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { expanded = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+// --- End Date Helpers ---
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleDropdown(
+    label: String,
+    options: List<String>,
+    selectedOption: String,
+    onOptionSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        JiraTextField(
+            value = selectedOption,
+            onValueChange = {},
+            readOnly = true,
+            label = label,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserDropdown(
+    users: List<User>,
+    selectedUser: User?,
+    onUserSelected: (User) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        JiraTextField(
+            value = selectedUser?.name ?: "Unassigned",
+            onValueChange = {},
+            readOnly = true,
+            label = "Assignee",
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            users.forEach { user ->
+                DropdownMenuItem(
+                    text = { Text(user.name) },
+                    onClick = {
+                        onUserSelected(user)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun TicketBoardScreen(
@@ -79,7 +254,33 @@ fun TicketBoardScreen(
             }
         }
 
-        ResourceHandler(state = ticketsState) { tickets ->
+        ResourceHandler(
+            state = ticketsState,
+            onLoading = {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    repeat(3) {
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Column(Modifier.padding(8.dp)) {
+                                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        items(4) {
+                                            TicketShimmerItem()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ) { tickets ->
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -118,7 +319,77 @@ fun TicketBoardScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JiraRichTextEditor(
+    state: com.mohamedrejeb.richeditor.model.RichTextState,
+    modifier: Modifier = Modifier,
+    placeholderText: String = "Description..."
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant,
+                RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp)
+    ) {
+        // ✏️ TOOLBAR
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            IconButton(onClick = {
+                state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            }) {
+                Icon(Icons.Default.FormatBold, "Bold")
+            }
+
+            IconButton(onClick = {
+                state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic))
+            }) {
+                Icon(Icons.Default.FormatItalic, "Italic")
+            }
+
+            IconButton(onClick = {
+                state.toggleCodeSpan()
+            }) {
+                Icon(Icons.Default.Code, "Code")
+            }
+
+            IconButton(onClick = {
+                state.toggleUnorderedList()
+            }) {
+                Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "List")
+            }
+        }
+
+        // ✏️ EDITOR
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp, max = 250.dp)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(8.dp)
+                )
+                .padding(8.dp)
+        ) {
+            if (state.toHtml().isEmpty()) {
+                Text(
+                    placeholderText,
+                    color = Color.Gray
+                )
+            }
+
+            RichTextEditor(
+                state = state,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
 @Composable
 fun CreateTicketScreen(
     project: Project,
@@ -128,80 +399,135 @@ fun CreateTicketScreen(
     onLogout: () -> Unit
 ) {
     var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    val descriptionState = rememberRichTextState()
     var selectedUser by remember { mutableStateOf<User?>(null) }
-    var expanded by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf(Status.TODO.value) }
+    var priority by remember { mutableStateOf("medium") }
+    var startTime by remember { mutableStateOf("") }
+    var endTime by remember { mutableStateOf("") }
+    var dueDate by remember { mutableStateOf("") }
 
     val usersState by viewModel.usersState.collectAsState()
     val actionState by viewModel.actionState.collectAsState()
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize()) {
         CommonTopBar(title = "New Ticket", showBack = true, onBack = onBack, onLogout = onLogout)
 
-        Spacer(Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(scrollState)
+        ) {
+            JiraTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = "Title",
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Title") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            Spacer(Modifier.height(16.dp))
 
-        Spacer(Modifier.height(16.dp))
+            Text(
+                "Description",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
-        )
+            JiraRichTextEditor(
+                state = descriptionState,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-        ResourceHandler(
-            state = usersState,
-            onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }) { users ->
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                OutlinedTextField(
-                    value = selectedUser?.name ?: "Select Assignee",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Assignee") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth()
+            SimpleDropdown(
+                label = "Status",
+                options = listOf(Status.TODO.value, Status.IN_PROGRESS.value, Status.DONE.value),
+                selectedOption = status,
+                onOptionSelected = { status = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            SimpleDropdown(
+                label = "Priority",
+                options = listOf("low", "medium", "high", "critical"),
+                selectedOption = priority,
+                onOptionSelected = { priority = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            ResourceHandler(
+                state = usersState,
+                onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            ) { users ->
+                UserDropdown(
+                    users = users,
+                    selectedUser = selectedUser,
+                    onUserSelected = { selectedUser = it }
                 )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    users.forEach { user ->
-                        DropdownMenuItem(
-                            text = { Text(user.name) },
-                            onClick = {
-                                selectedUser = user
-                                expanded = false
-                            }
-                        )
-                    }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            DatePickerField(
+                label = "Start Time (YYYY-MM-DD)",
+                selectedDate = startTime,
+                onDateSelected = { startTime = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            DatePickerField(
+                label = "End Time (YYYY-MM-DD)",
+                selectedDate = endTime,
+                onDateSelected = { endTime = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            DatePickerField(
+                label = "Due Date (YYYY-MM-DD)",
+                selectedDate = dueDate,
+                onDateSelected = { dueDate = it }
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            Button(
+                onClick = { 
+                    viewModel.addTicket(
+                        title = title,
+                        description = descriptionState.toHtml(),
+                        status = status,
+                        priority = priority,
+                        project = project,
+                        selectedUser = selectedUser,
+                        startTime = startTime.takeIf { it.isNotBlank() },
+                        endTime = endTime.takeIf { it.isNotBlank() },
+                        dueDate = dueDate.takeIf { it.isNotBlank() },
+                        onComplete = onCreate
+                    ) 
+                },
+                enabled = title.isNotBlank() && actionState !is ResourceState.Loading,
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                if (actionState is ResourceState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text("Create Ticket")
                 }
             }
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        Button(
-            onClick = { viewModel.addTicket(title, description, project, selectedUser, onCreate) },
-            enabled = title.isNotBlank() && actionState !is ResourceState.Loading,
-            modifier = Modifier.fillMaxWidth().height(50.dp)
-        ) {
-            if (actionState is ResourceState.Loading) {
-                //  CircularProgressIndicator(size = 24.dp, color = Color.White)
-            } else {
-                Text("Create Ticket")
-            }
+            
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -257,14 +583,41 @@ fun TicketCardV2(
     ) {
         Row(Modifier.height(IntrinsicSize.Min)) {
             Box(modifier = Modifier.width(4.dp).fillMaxHeight().background(borderColor))
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
                 Text(
                     text = ticket.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2
                 )
-                Spacer(Modifier.height(8.dp))
+                
+                Spacer(Modifier.height(6.dp))
+                
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        text = "Priority: ${ticket.priority ?: "medium"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    
+                    Text(
+                        text = "Status: ${ticket.status}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                ticket.dueDate?.let { dueDate ->
+                    Text(
+                        text = "Due: $dueDate",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier.size(20.dp)
@@ -285,6 +638,7 @@ fun TicketCardV2(
                         color = Color.Gray
                     )
                 }
+                
                 onMove?.let {
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = { it(ticket) }, contentPadding = PaddingValues(0.dp)) {
@@ -491,7 +845,21 @@ fun TicketDetailScreenV4(
                         HorizontalDivider()
 
                         // 🔹 CONTENT
-                        ResourceHandler(state = historyState) { history ->
+                        ResourceHandler(
+                            state = historyState,
+                            onLoading = {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    contentPadding = PaddingValues(vertical = 12.dp)
+                                ) {
+                                    items(5) {
+                                        HistoryShimmerItem()
+                                    }
+                                }
+                            }
+                        ) { history ->
                             if (history.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
@@ -635,16 +1003,26 @@ fun TicketDetailScreenV4(
                                     }
                                 }
                             }
-                            Text(
-                                ticket.description,
-                                style = MaterialTheme.typography.bodySmall,
+                            
+                            val descState = rememberRichTextState()
+                            LaunchedEffect(ticket.description) {
+                                descState.setHtml(ticket.description)
+                            }
+                            
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(
                                         color = MaterialTheme.colorScheme.surfaceVariant,
                                         shape = RoundedCornerShape(11.dp)
                                     ).padding(10.dp)
-                            )
+                            ) {
+                                RichText(
+                                    state = descState,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
 
                         item {
@@ -665,7 +1043,19 @@ fun TicketDetailScreenV4(
                                 
                                 ResourceHandler(
                                     state = commentsState,
-                                    onLoading = { Text("Loading comments...") }
+                                    onLoading = {
+                                        Spacer(Modifier.height(20.dp))
+                                        Text(
+                                            "Comments",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Column {
+                                            repeat(3) {
+                                                CommentShimmerItem()
+                                            }
+                                        }
+                                    }
                                 ) { comments ->
                                     Spacer(Modifier.height(20.dp))
                                     Text(
@@ -752,7 +1142,10 @@ fun TicketDetailScreenV4(
 }
 
 @Composable
-fun TaskListScreen(viewModel: TicketViewModel = viewModel { TicketViewModel() }) {
+fun TaskListScreen(
+    viewModel: TicketViewModel = viewModel { TicketViewModel() },
+    onTicketClick: (Ticket) -> Unit
+) {
     val allTicketsState by viewModel.allTicketsState.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -765,13 +1158,21 @@ fun TaskListScreen(viewModel: TicketViewModel = viewModel { TicketViewModel() })
 
         ResourceHandler(
             state = allTicketsState,
-            onLoading = { LoadingUI() }
-        ) { tickets ->
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(tickets) { ticket ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Text(ticket.title, modifier = Modifier.padding(16.dp))
+            onLoading = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(5) {
+                        TicketShimmerItem()
                     }
+                }
+            }
+        ) { tickets ->
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(tickets) { ticket ->
+                    TicketCardV2(
+                        ticket = ticket,
+                        onTicketClick = onTicketClick,
+                        onMove = null
+                    )
                 }
             }
         }
@@ -784,58 +1185,148 @@ fun EditTicketScreen(
     onTicketUpdated: (Ticket) -> Unit,
     viewModel: TicketViewModel = viewModel { TicketViewModel() },
 ) {
+    val usersState by viewModel.usersState.collectAsState()
+    val updateState by viewModel.updateTicketState.collectAsState()
+    
+    LaunchedEffect(Unit) {
+        viewModel.loadUsers()
+    }
+
     var title by remember { mutableStateOf(ticket.title) }
-    var description by remember { mutableStateOf(ticket.description) }
     var status by remember { mutableStateOf(ticket.status) }
-    var projectId by remember { mutableStateOf(ticket.projectId) }
+    var priority by remember { mutableStateOf(ticket.priority ?: "medium") }
+    var selectedUser by remember { mutableStateOf<User?>(null) }
+    var startTime by remember { mutableStateOf(ticket.startTime ?: "") }
+    var endTime by remember { mutableStateOf(ticket.endTime ?: "") }
+    var dueDate by remember { mutableStateOf(ticket.dueDate ?: "") }
+    val descState = rememberRichTextState()
+    val scrollState = rememberScrollState()
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    LaunchedEffect(ticket.description) {
+        descState.setHtml(ticket.description)
+    }
 
-        Text("Edit Ticket", style = MaterialTheme.typography.headlineSmall)
+    // Attempt to match selected user
+    LaunchedEffect(usersState) {
+        if (usersState is ResourceState.Success) {
+            val users = (usersState as ResourceState.Success<List<User>>).data
+            selectedUser = users.find { it.name == ticket.assignedTo }
+        }
+    }
 
-        Spacer(Modifier.height(16.dp))
+    Column(Modifier.fillMaxSize()) {
+        CommonTopBar(title = "Edit Ticket", showBack = true, onBack = { /* Need to navigate back properly if injected but assumed standard */ })
 
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Title") },
-            modifier = Modifier.fillMaxWidth()
-        )
+        Column(modifier = Modifier.padding(16.dp).verticalScroll(scrollState)) {
 
-        Spacer(Modifier.height(16.dp))
+            Text("Edit Ticket", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            JiraTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = "Title",
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
+            
+            Text(
+                "Description",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            JiraRichTextEditor(
+                state = descState,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        OutlinedTextField(
-            value = status,
-            onValueChange = { status = it },
-            label = { Text("Status") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            Spacer(Modifier.height(16.dp))
 
-        Spacer(Modifier.height(24.dp))
+            SimpleDropdown(
+                label = "Status",
+                options = listOf(Status.TODO.value, Status.IN_PROGRESS.value, Status.DONE.value),
+                selectedOption = status,
+                onOptionSelected = { status = it }
+            )
 
-        Button(
-            onClick = {
-                viewModel.updateTicket(
-                    oldTicket = ticket,
-                    title = title,
-                    description = description,
-                    projectId = projectId!!,
-                    newStatus = status,
-                    onTicketUpdated = onTicketUpdated
+            Spacer(Modifier.height(16.dp))
+
+            SimpleDropdown(
+                label = "Priority",
+                options = listOf("low", "medium", "high", "critical"),
+                selectedOption = priority,
+                onOptionSelected = { priority = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            ResourceHandler(
+                state = usersState,
+                onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            ) { users ->
+                UserDropdown(
+                    users = users,
+                    selectedUser = selectedUser,
+                    onUserSelected = { selectedUser = it }
                 )
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Save Changes")
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            DatePickerField(
+                label = "Start Time (YYYY-MM-DD)",
+                selectedDate = startTime,
+                onDateSelected = { startTime = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            DatePickerField(
+                label = "End Time (YYYY-MM-DD)",
+                selectedDate = endTime,
+                onDateSelected = { endTime = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            DatePickerField(
+                label = "Due Date (YYYY-MM-DD)",
+                selectedDate = dueDate,
+                onDateSelected = { dueDate = it }
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            Button(
+                onClick = {
+                    viewModel.updateTicket(
+                        oldTicket = ticket,
+                        title = title,
+                        description = descState.toHtml(),
+                        newStatus = status,
+                        priority = priority,
+                        selectedUser = selectedUser,
+                        startTime = startTime.takeIf { it.isNotBlank() },
+                        endTime = endTime.takeIf { it.isNotBlank() },
+                        dueDate = dueDate.takeIf { it.isNotBlank() },
+                        projectId = ticket.projectId ?: 0L,
+                        onTicketUpdated = onTicketUpdated
+                    )
+                },
+                enabled = title.isNotBlank() && updateState !is ResourceState.Loading,
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                if (updateState is ResourceState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text("Save Changes")
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp))
         }
     }
 }

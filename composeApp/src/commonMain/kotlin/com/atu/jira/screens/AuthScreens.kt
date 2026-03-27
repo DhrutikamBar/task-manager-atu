@@ -2,13 +2,17 @@ package com.atu.jira.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.MainButton
 import com.atu.jira.utils.ResourceState
 import com.atu.jira.viewmodel.AuthViewModel
@@ -31,22 +35,25 @@ fun LoginScreen(
             Text("Login", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(16.dp))
 
-            OutlinedTextField(
+            JiraTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = "Email",
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is ResourceState.Loading
+                enabled = authState !is ResourceState.Loading,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
+            JiraTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = "Password",
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is ResourceState.Loading
+                enabled = authState !is ResourceState.Loading,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
             Spacer(Modifier.height(24.dp))
@@ -97,45 +104,46 @@ fun SignupScreen(
             Text("Signup", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(16.dp))
 
-            OutlinedTextField(
+            JiraTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name") },
+                label = "Name",
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authState !is ResourceState.Loading
             )
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
+            JiraTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = "Email",
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is ResourceState.Loading
+                enabled = authState !is ResourceState.Loading,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
+            JiraTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = "Password",
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is ResourceState.Loading
+                enabled = authState !is ResourceState.Loading,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
             Spacer(Modifier.height(24.dp))
 
-            Button(
+            MainButton(
+                text = if (authState is ResourceState.Loading) "Creating..." else "Signup",
+                enabled = authState !is ResourceState.Loading,
                 onClick = {
                     viewModel.signupUser(email, name, password, onSignupSuccess, onLoginClick)
-                },
-                enabled = authState !is ResourceState.Loading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (authState is ResourceState.Loading) "Creating..." else "Signup")
-            }
+                }
+            )
 
             Spacer(Modifier.height(12.dp))
             Text(

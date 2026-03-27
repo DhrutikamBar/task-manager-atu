@@ -67,16 +67,33 @@ enum class Screen {
 @Serializable @SerialName("create_project") object CreateProjectRoute
 @Serializable @SerialName("board") data class BoardRoute(val projectId: Long, val projectName: String)
 @Serializable @SerialName("create_ticket") data class CreateTicketRoute(val projectId: Long, val projectName: String)
+
 @Serializable @SerialName("ticket_detail") data class TicketDetailRoute(
     val id: String,
     val title: String,
     val description: String,
-    val assignedTo: String? = null
+    val status: String,
+    val priority: String? = null,
+    val assignedTo: String? = null,
+    val projectId: Long? = null,
+    val createdBy: String? = null,
+    val startTime: String? = null,
+    val endTime: String? = null,
+    val dueDate: String? = null,
+    val createdAt: String? = null
 )
 
 @Serializable @SerialName("edit_ticket") data class EditTicketRoute(
     val id: String,
     val title: String,
     val description: String,
-    val status: String
+    val status: String,
+    val priority: String? = null,
+    val assignedTo: String? = null,
+    val projectId: Long? = null,
+    val createdBy: String? = null,
+    val startTime: String? = null,
+    val endTime: String? = null,
+    val dueDate: String? = null,
+    val createdAt: String? = null
 )

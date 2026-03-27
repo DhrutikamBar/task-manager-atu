@@ -247,67 +247,60 @@ suspend fun addTicketHistory(history: TicketHistory) {
 }
 
 suspend fun updateTicketWithHistory(
-    ticket: Ticket,
-    newDescription: String,
-    newStatus: String
+    oldTicket: Ticket,
+    newTicket: Ticket
 ) {
     try {
-        // 1️⃣ Fetch current ticket (old values)
-        val oldTicket: Ticket = SupaBaseClient.client
-            .get("/rest/v1/tickets?id=eq.${ticket.id}") {
-                headers {
-                    append("apikey", API_KEY)
-                    append("Authorization", "Bearer $API_KEY")
-                }
-            }
-            .body<List<Ticket>>()
-            .first()
+        // Prepare the payload dynamically mapping only fields that aren't null or changed
+        val patchPayload = mutableMapOf<String, String>()
+        patchPayload["title"] = newTicket.title
+        patchPayload["description"] = newTicket.description
+        patchPayload["status"] = newTicket.status
+        newTicket.priority?.let { patchPayload["priority"] = it }
+        newTicket.assignedTo?.let { patchPayload["assigned_to"] = it }
+        newTicket.startTime?.let { patchPayload["start_time"] = it }
+        newTicket.endTime?.let { patchPayload["end_time"] = it }
+        newTicket.dueDate?.let { patchPayload["due_date"] = it }
+        patchPayload["updated_at"] = Clock.System.now().toString()
 
-        // 2️⃣ Update ticket
-        SupaBaseClient.client.patch("/rest/v1/tickets?id=eq.${ticket.id}") {
+        // 1️⃣ Update ticket
+        SupaBaseClient.client.patch("/rest/v1/tickets?id=eq.${oldTicket.id}") {
             headers {
                 append("apikey", API_KEY)
                 append("Authorization", "Bearer $API_KEY")
                 append("Content-Type", "application/json")
                 append("Prefer", "return=minimal")
             }
-            setBody(
-                mapOf(
-                    "description" to newDescription,
-                    "status" to newStatus,
-                    "updated_at" to Clock.System.now().toString()
-                )
-            )
+            setBody(patchPayload)
         }
 
-        // 3️⃣ Prepare history entries
+        // 2️⃣ Prepare history entries
         val historyEntries = mutableListOf<Map<String, Any>>()
 
-        if (oldTicket.description != newDescription) {
-            historyEntries.add(
-                mapOf(
-                    "ticket_id" to ticket.id.toString(),
-                    "field_name" to "description",
-                    "old_value" to (oldTicket.description ?: ""),
-                    "new_value" to newDescription,
-                    "changed_by" to "user_1"
+        fun checkChange(fieldName: String, oldVal: String?, newVal: String?) {
+            if (oldVal != newVal) {
+                historyEntries.add(
+                    mapOf(
+                        "ticket_id" to oldTicket.id.toString(),
+                        "field_name" to fieldName,
+                        "old_value" to (oldVal ?: ""),
+                        "new_value" to (newVal ?: ""),
+                        "changed_by" to (AuthManager.userId ?: "user_1")
+                    )
                 )
-            )
+            }
         }
 
-        if (oldTicket.status != newStatus) {
-            historyEntries.add(
-                mapOf(
-                    "ticket_id" to ticket.id.toString(),
-                    "field_name" to "status",
-                    "old_value" to oldTicket.status,
-                    "new_value" to newStatus,
-                    "changed_by" to "user_1"
-                )
-            )
-        }
+        checkChange("title", oldTicket.title, newTicket.title)
+        checkChange("description", oldTicket.description, newTicket.description)
+        checkChange("status", oldTicket.status, newTicket.status)
+        checkChange("priority", oldTicket.priority, newTicket.priority)
+        checkChange("assigned_to", oldTicket.assignedTo, newTicket.assignedTo)
+        checkChange("start_time", oldTicket.startTime, newTicket.startTime)
+        checkChange("end_time", oldTicket.endTime, newTicket.endTime)
+        checkChange("due_date", oldTicket.dueDate, newTicket.dueDate)
 
-        // 4️⃣ Insert history (only if something changed)
+        // 3️⃣ Insert history (only if something changed)
         if (historyEntries.isNotEmpty()) {
             SupaBaseClient.client.post("/rest/v1/ticket_history") {
                 headers {

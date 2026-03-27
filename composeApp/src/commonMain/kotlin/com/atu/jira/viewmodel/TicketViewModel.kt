@@ -83,8 +83,13 @@ class TicketViewModel : ViewModel() {
     fun addTicket(
         title: String,
         description: String,
+        status: String,
+        priority: String,
         project: Project,
         selectedUser: User?,
+        startTime: String?,
+        endTime: String?,
+        dueDate: String?,
         onComplete: (Ticket) -> Unit
     ) {
         if (title.isBlank()) return
@@ -95,11 +100,14 @@ class TicketViewModel : ViewModel() {
                 val newTicket = Ticket(
                     title = title,
                     description = description,
-                    status = Status.TODO.value,
+                    status = status,
                     projectId = project.id,
                     assignedTo = selectedUser?.name,
                     createdBy = AuthManager.userId,
-                    priority = "medium"
+                    priority = priority,
+                    startTime = startTime,
+                    endTime = endTime,
+                    dueDate = dueDate
                 )
                 createTicket(newTicket)
                 _actionState.value = ResourceState.Success(Unit)
@@ -115,6 +123,11 @@ class TicketViewModel : ViewModel() {
         title: String,
         description: String,
         newStatus: String,
+        priority: String,
+        selectedUser: User?,
+        startTime: String?,
+        endTime: String?,
+        dueDate: String?,
         projectId : Long,
         onTicketUpdated: (Ticket) -> Unit
     ) {
@@ -124,15 +137,20 @@ class TicketViewModel : ViewModel() {
             _updateTicketState.value = ResourceState.Loading
             try {
                 val newTicket = Ticket(
+                    id = oldTicket.id,
                     title = title,
                     description = description,
-                    status = Status.TODO.value,
+                    status = newStatus,
                     projectId = projectId,
-                    assignedTo = "Rabil", // hardcoded in original file
-                    createdBy = AuthManager.userId,
-                    priority = "medium"
+                    assignedTo = selectedUser?.name, 
+                    createdBy = oldTicket.createdBy ?: AuthManager.userId,
+                    priority = priority,
+                    startTime = startTime,
+                    endTime = endTime,
+                    dueDate = dueDate,
+                    createdAt = oldTicket.createdAt
                 )
-                updateTicketWithHistory(ticket = oldTicket, newDescription = description, newStatus = newStatus)
+                updateTicketWithHistory(oldTicket = oldTicket, newTicket = newTicket)
                 _updateTicketState.value = ResourceState.Success(Unit)
                 onTicketUpdated(newTicket)
             } catch (e: Exception) {
