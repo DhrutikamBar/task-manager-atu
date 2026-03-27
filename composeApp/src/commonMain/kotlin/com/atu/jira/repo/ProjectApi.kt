@@ -14,6 +14,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 
 private const val API_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmaGd3dGhvbXRncGFsa2hsZnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNTg1MzUsImV4cCI6MjA4OTgzNDUzNX0.FyXXXeTZbVC4Xm8ok8fR5gHhYrsA6PK9UUXBREw9YK4"
@@ -66,7 +67,7 @@ suspend fun createTicket(ticket: Ticket) {
     }
 }
 
-suspend fun updateTicketStatus(ticketId: Long, status: String) {
+suspend fun updateTicketStatus(ticketId: String, status: String) {
     SupaBaseClient.client.patch("/rest/v1/tickets?id=eq.$ticketId") {
         contentType(ContentType.Application.Json)
         headers {
@@ -200,7 +201,136 @@ suspend fun getUsers(): List<User> {
         .get("/rest/v1/users") {
             headers {
                 append("apikey", API_KEY)
-                append("Authorization", "Bearer ${AuthManager.accessToken}")
+                append("Authorization", "Bearer $API_KEY")
+            }
+        }
+        .body()
+}
+
+suspend fun getComments(ticketId: String): List<Comment> {
+    return SupaBaseClient.client
+        .get("/rest/v1/comments?ticket_id=eq.$ticketId&order=created_at.asc"){
+            headers {
+                append("apikey", API_KEY)
+                append("Authorization", "Bearer $API_KEY")
+            }
+        }
+        .body()
+}
+
+suspend fun addComment(comment: Comment) {
+    SupaBaseClient.client.post("/rest/v1/comments") {
+        contentType(ContentType.Application.Json)
+
+        headers {
+            append("Prefer", "return=minimal")
+            append("apikey", API_KEY)
+            append("Authorization", "Bearer $API_KEY")
+
+        }
+
+        setBody(listOf(comment))
+    }
+}
+
+suspend fun addTicketHistory(history: TicketHistory) {
+    SupaBaseClient.client.post("/rest/v1/ticket_history") {
+        contentType(ContentType.Application.Json)
+        headers {
+            append("Prefer", "return=minimal")
+            append("apikey", API_KEY)
+            append("Authorization", "Bearer $API_KEY")
+
+        }
+        setBody(listOf(history))
+    }
+}
+
+suspend fun updateTicketWithHistory(
+    ticket: Ticket,
+    newDescription: String,
+    newStatus: String
+) {
+    try {
+        // 1️⃣ Fetch current ticket (old values)
+        val oldTicket: Ticket = SupaBaseClient.client
+            .get("/rest/v1/tickets?id=eq.${ticket.id}") {
+                headers {
+                    append("apikey", API_KEY)
+                    append("Authorization", "Bearer $API_KEY")
+                }
+            }
+            .body<List<Ticket>>()
+            .first()
+
+        // 2️⃣ Update ticket
+        SupaBaseClient.client.patch("/rest/v1/tickets?id=eq.${ticket.id}") {
+            headers {
+                append("apikey", API_KEY)
+                append("Authorization", "Bearer $API_KEY")
+                append("Content-Type", "application/json")
+                append("Prefer", "return=minimal")
+            }
+            setBody(
+                mapOf(
+                    "description" to newDescription,
+                    "status" to newStatus,
+                    "updated_at" to Clock.System.now().toString()
+                )
+            )
+        }
+
+        // 3️⃣ Prepare history entries
+        val historyEntries = mutableListOf<Map<String, Any>>()
+
+        if (oldTicket.description != newDescription) {
+            historyEntries.add(
+                mapOf(
+                    "ticket_id" to ticket.id.toString(),
+                    "field_name" to "description",
+                    "old_value" to (oldTicket.description ?: ""),
+                    "new_value" to newDescription,
+                    "changed_by" to "user_1"
+                )
+            )
+        }
+
+        if (oldTicket.status != newStatus) {
+            historyEntries.add(
+                mapOf(
+                    "ticket_id" to ticket.id.toString(),
+                    "field_name" to "status",
+                    "old_value" to oldTicket.status,
+                    "new_value" to newStatus,
+                    "changed_by" to "user_1"
+                )
+            )
+        }
+
+        // 4️⃣ Insert history (only if something changed)
+        if (historyEntries.isNotEmpty()) {
+            SupaBaseClient.client.post("/rest/v1/ticket_history") {
+                headers {
+                    append("apikey", API_KEY)
+                    append("Authorization", "Bearer $API_KEY")
+                    append("Content-Type", "application/json")
+                    append("Prefer", "return=minimal")
+                }
+                setBody(historyEntries)
+            }
+        }
+
+    } catch (e: Exception) {
+        println("Update ticket failed: ${e.message}")
+    }
+}
+
+suspend fun getTicketHistory(ticketId: String): List<TicketHistory> {
+    return SupaBaseClient.client
+        .get("/rest/v1/ticket_history?ticket_id=eq.$ticketId&order=changed_at.desc") {
+            headers {
+                append("apikey", API_KEY)
+                append("Authorization", "Bearer $API_KEY")
             }
         }
         .body()

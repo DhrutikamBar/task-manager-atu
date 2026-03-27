@@ -21,7 +21,7 @@ data class Project(
 
 @Serializable
 data class Ticket(
-    val id: Long? = null,
+    val id: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     var title: String,
@@ -68,8 +68,15 @@ enum class Screen {
 @Serializable @SerialName("board") data class BoardRoute(val projectId: Long, val projectName: String)
 @Serializable @SerialName("create_ticket") data class CreateTicketRoute(val projectId: Long, val projectName: String)
 @Serializable @SerialName("ticket_detail") data class TicketDetailRoute(
-    val id: Long,
+    val id: String,
     val title: String,
     val description: String,
     val assignedTo: String? = null
+)
+
+@Serializable @SerialName("edit_ticket") data class EditTicketRoute(
+    val id: String,
+    val title: String,
+    val description: String,
+    val status: String
 )

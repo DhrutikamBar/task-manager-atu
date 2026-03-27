@@ -9,7 +9,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.atu.jira.auth.AuthManager
 import com.atu.jira.model.*
+import com.atu.jira.repo.updateTicketWithHistory
 import com.atu.jira.screens.*
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -36,6 +38,40 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                     }
                 },
                 onSignupClick = { navController.navigate(SignupRoute) }
+            )
+        }
+
+        composable<EditTicketRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<EditTicketRoute>()
+            val scope = rememberCoroutineScope()
+
+           /* var updateTrigger by remember { mutableStateOf(false) }
+
+            LaunchedEffect(updateTrigger) {
+                if (updateTrigger) {
+                    try {
+
+                    } catch (e: Exception) {
+                        println("Update failed: ${e.message}")
+                    } finally {
+                        updateTrigger = false
+                    }
+                }
+            }*/
+
+            EditTicketScreen(
+                ticket = Ticket(
+                    id = route.id,
+                    title = route.title,
+                    description = route.description,
+                    status = route.status,
+                    projectId = 0L,
+                    assignedTo = ""
+                ),
+                onTicketUpdated = { ticket ->
+
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -73,7 +109,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                 onTicketClick = { ticket ->
                     navController.navigate(
                         TicketDetailRoute(
-                            id = ticket.id ?: 0L,
+                            id = ticket.id!!,
                             title = ticket.title,
                             description = ticket.description,
                             assignedTo = ticket.assignedTo
@@ -125,7 +161,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
 
         composable<TicketDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<TicketDetailRoute>()
-            TicketDetailScreen(
+            TicketDetailScreenV4(
                 ticket = Ticket(
                     id = route.id,
                     title = route.title,
@@ -140,6 +176,15 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                     navController.navigate(LoginRoute) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
+                }, onClickEditTicket = { ticket ->
+                    navController.navigate(
+                        EditTicketRoute(
+                            ticket.id.toString(),
+                            ticket.title,
+                            ticket.description,
+                            ticket.status
+                        )
+                    )
                 }
             )
         }

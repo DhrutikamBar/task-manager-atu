@@ -52,6 +52,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.cio)
+            implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -69,6 +70,7 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation("io.ktor:ktor-client-logging:3.0.3")
             implementation(libs.navigation.compose)
+            implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -80,6 +82,7 @@ kotlin {
                 implementation(libs.kotlinx.browser)
                 // Explicitly add for Web to ensure URL syncing works
                 implementation(libs.navigation.compose)
+                implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
             }
         }
         
@@ -96,6 +99,7 @@ kotlin {
             dependencies {
                 implementation(libs.kotlinx.browser)
                 implementation(libs.ktor.client.js)
+                implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
             }
         }
         
@@ -104,7 +108,7 @@ kotlin {
             dependencies {
                 implementation(libs.kotlinx.browser)
                 implementation(libs.ktor.client.js)
-
+                implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
 
             }
         }
