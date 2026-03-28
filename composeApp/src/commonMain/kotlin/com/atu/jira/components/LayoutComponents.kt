@@ -3,11 +3,14 @@ package com.atu.jira.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,11 +21,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.atu.jira.auth.AuthManager
+import com.atu.jira.theme.LocalThemeController
 import com.atu.jira.utils.ResourceState
 import jiraatu.composeapp.generated.resources.Res
 import jiraatu.composeapp.generated.resources.ic_atu
@@ -202,6 +208,7 @@ fun CommonTopBar(
     onLogout: () -> Unit = {}
 ) {
     var showProfileMenu by remember { mutableStateOf(false) }
+    val themeController = LocalThemeController.current
 
     Row(
         modifier = Modifier
@@ -211,7 +218,10 @@ fun CommonTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (showBack && onBack != null) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
@@ -237,8 +247,21 @@ fun CommonTopBar(
             maxLines = 1
         )
 
+        IconButton(
+            onClick = { themeController.toggle() },
+            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+        ) {
+            Icon(
+                imageVector = if (themeController.isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                contentDescription = "Toggle Theme"
+            )
+        }
+
         Box {
-            IconButton(onClick = { showProfileMenu = true }) {
+            IconButton(
+                onClick = { showProfileMenu = true },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profile",
@@ -268,7 +291,7 @@ fun CommonTopBar(
                             showProfileMenu = false
                             onLogout()
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
                         Text("Logout", color = Color.White)

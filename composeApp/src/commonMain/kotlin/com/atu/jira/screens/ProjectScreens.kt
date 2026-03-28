@@ -14,11 +14,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.atu.jira.components.CommonTopBar
+import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
+import com.atu.jira.components.MainButton
 import com.atu.jira.components.ProjectShimmerItem
 import com.atu.jira.components.ResourceHandler
 import com.atu.jira.model.Project
@@ -52,9 +56,17 @@ fun ProjectListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Your Projects", style = MaterialTheme.typography.headlineSmall)
-                Button(onClick = onAddProject) {
-                    Text("+ New")
+
+                Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center){
+                    JiraButton(
+                        text = "+ New",
+                        enabled = true,
+                        onClick = {
+                            onAddProject()
+                        }
+                    )
                 }
+
             }
 
             Spacer(Modifier.height(16.dp))
@@ -79,7 +91,8 @@ fun ProjectListScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onProjectClick(project) },
+                                    .clickable { onProjectClick(project) }
+                                    .pointerHoverIcon(PointerIcon.Hand),
                                 shape = RoundedCornerShape(12.dp),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -169,17 +182,11 @@ fun CreateProjectScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            Button(
-                onClick = { viewModel.addProject(projectName, onCreate) },
+            JiraButton(
+                text = if (createProjectState is ResourceState.Loading) "Creating..." else "Create Project",
                 enabled = projectName.isNotBlank() && createProjectState !is ResourceState.Loading,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                if (createProjectState is ResourceState.Loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                } else {
-                    Text("Create Project")
-                }
-            }
+                onClick = { viewModel.addProject(projectName, onCreate) }
+            )
 
             if (createProjectState is ResourceState.Error) {
                 Text(

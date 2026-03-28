@@ -8,6 +8,8 @@ import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.model.Project
@@ -27,10 +29,18 @@ fun HomeScreen(
         CommonTopBar(title = "Home", onLogout = onLogout)
         
         SecondaryTabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Text("Projects", modifier = Modifier.padding(16.dp))
             }
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Text("Tasks", modifier = Modifier.padding(16.dp))
             }
         }

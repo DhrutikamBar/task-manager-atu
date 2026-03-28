@@ -8,10 +8,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.MainButton
 import com.atu.jira.utils.ResourceState
@@ -58,7 +61,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            MainButton(
+            JiraButton(
                 text = if (authState is ResourceState.Loading) "Logging in..." else "Login",
                 enabled = authState !is ResourceState.Loading,
                 onClick = {
@@ -69,7 +72,9 @@ fun LoginScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 "Don't have an account? Signup",
-                modifier = Modifier.clickable { onSignupClick() },
+                modifier = Modifier
+                    .clickable { onSignupClick() }
+                    .pointerHoverIcon(PointerIcon.Hand),
                 color = MaterialTheme.colorScheme.primary
             )
 
@@ -137,7 +142,7 @@ fun SignupScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            MainButton(
+            JiraButton(
                 text = if (authState is ResourceState.Loading) "Creating..." else "Signup",
                 enabled = authState !is ResourceState.Loading,
                 onClick = {
@@ -148,7 +153,9 @@ fun SignupScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 "Already have an account? Login",
-                modifier = Modifier.clickable { onLoginClick() },
+                modifier = Modifier
+                    .clickable { onLoginClick() }
+                    .pointerHoverIcon(PointerIcon.Hand),
                 color = MaterialTheme.colorScheme.primary
             )
 

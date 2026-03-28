@@ -22,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -33,8 +35,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.atu.jira.components.CommentShimmerItem
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.components.HistoryShimmerItem
+import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.LoadingUI
+import com.atu.jira.components.MainButton
 import com.atu.jira.components.ResourceHandler
 import com.atu.jira.components.TicketShimmerItem
 import com.atu.jira.model.Project
@@ -114,6 +118,7 @@ fun DatePickerField(
                 .matchParentSize()
                 .background(Color.Transparent)
                 .clickable { expanded = true }
+                .pointerHoverIcon(PointerIcon.Hand)
         )
     }
 
@@ -121,17 +126,23 @@ fun DatePickerField(
         DatePickerDialog(
             onDismissRequest = { expanded = false },
             confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        onDateSelected(formatEpochMillisToDate(millis))
-                    }
-                    expanded = false
-                }) {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            onDateSelected(formatEpochMillisToDate(millis))
+                        }
+                        expanded = false
+                    },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Text("OK")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { expanded = false }) {
+                TextButton(
+                    onClick = { expanded = false },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Text("Cancel")
                 }
             }
@@ -162,7 +173,8 @@ fun SimpleDropdown(
             readOnly = true,
             label = label,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -174,7 +186,8 @@ fun SimpleDropdown(
                     onClick = {
                         onOptionSelected(option)
                         expanded = false
-                    }
+                    },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
                 )
             }
         }
@@ -199,7 +212,8 @@ fun UserDropdown(
             readOnly = true,
             label = "Assignee",
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -211,7 +225,8 @@ fun UserDropdown(
                     onClick = {
                         onUserSelected(user)
                         expanded = false
-                    }
+                    },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
                 )
             }
         }
@@ -249,9 +264,17 @@ fun TicketBoardScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Kanban Board", style = MaterialTheme.typography.titleLarge)
-            Button(onClick = onAddTicket) {
-                Text("+ New Ticket")
+
+            Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center) {
+                JiraButton(
+                    text = "+ New Ticket",
+                    enabled = true,
+                    onClick = {
+                        onAddTicket()
+                    }
+                )
             }
+
         }
 
         ResourceHandler(
@@ -339,27 +362,31 @@ fun JiraRichTextEditor(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Start
         ) {
-            IconButton(onClick = {
-                state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold))
-            }) {
+            IconButton(
+                onClick = { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Icon(Icons.Default.FormatBold, "Bold")
             }
 
-            IconButton(onClick = {
-                state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic))
-            }) {
+            IconButton(
+                onClick = { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Icon(Icons.Default.FormatItalic, "Italic")
             }
 
-            IconButton(onClick = {
-                state.toggleCodeSpan()
-            }) {
+            IconButton(
+                onClick = { state.toggleCodeSpan() },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Icon(Icons.Default.Code, "Code")
             }
 
-            IconButton(onClick = {
-                state.toggleUnorderedList()
-            }) {
+            IconButton(
+                onClick = { state.toggleUnorderedList() },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
                 Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "List")
             }
         }
@@ -384,7 +411,7 @@ fun JiraRichTextEditor(
 
             RichTextEditor(
                 state = state,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Text)
             )
         }
     }
@@ -502,8 +529,8 @@ fun CreateTicketScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            Button(
-                onClick = { 
+            JiraButton(
+                onClick = {
                     viewModel.addTicket(
                         title = title,
                         description = descriptionState.toHtml(),
@@ -515,18 +542,12 @@ fun CreateTicketScreen(
                         endTime = endTime.takeIf { it.isNotBlank() },
                         dueDate = dueDate.takeIf { it.isNotBlank() },
                         onComplete = onCreate
-                    ) 
+                    )
                 },
                 enabled = title.isNotBlank() && actionState !is ResourceState.Loading,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                if (actionState is ResourceState.Loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                } else {
-                    Text("Create Ticket")
-                }
-            }
-            
+                text = if (actionState is ResourceState.Loading) "Creating..." else "Create Ticket"
+            )
+
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -577,7 +598,8 @@ fun TicketCardV2(
     val borderColor = remember(ticket) { getTicketColor(ticket) }
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onTicketClick(ticket) },
+        modifier = Modifier.fillMaxWidth().clickable { onTicketClick(ticket) }
+            .pointerHoverIcon(PointerIcon.Hand),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(1.dp)
     ) {
@@ -590,16 +612,19 @@ fun TicketCardV2(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2
                 )
-                
+
                 Spacer(Modifier.height(6.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
                         text = "Priority: ${ticket.priority ?: "medium"}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
-                    
+
                     Text(
                         text = "Status: ${ticket.status}",
                         style = MaterialTheme.typography.labelSmall,
@@ -638,10 +663,14 @@ fun TicketCardV2(
                         color = Color.Gray
                     )
                 }
-                
+
                 onMove?.let {
                     Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { it(ticket) }, contentPadding = PaddingValues(0.dp)) {
+                    TextButton(
+                        onClick = { it(ticket) },
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
                         Text("Move →", style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -688,6 +717,7 @@ fun JiraCommentBox(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { isExpanded = true }
+                    .pointerHoverIcon(PointerIcon.Hand)
                     .padding(8.dp)
             )
         }
@@ -701,31 +731,31 @@ fun JiraCommentBox(
                 horizontalArrangement = Arrangement.Start
             ) {
 
-                IconButton(onClick = {
-                    state.toggleSpanStyle(
-                        SpanStyle(fontWeight = FontWeight.Bold)
-                    )
-                }) {
+                IconButton(
+                    onClick = { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Icon(Icons.Default.FormatBold, "Bold")
                 }
 
-                IconButton(onClick = {
-                    state.toggleSpanStyle(
-                        SpanStyle(fontStyle = FontStyle.Italic)
-                    )
-                }) {
+                IconButton(
+                    onClick = { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Icon(Icons.Default.FormatItalic, "Italic")
                 }
 
-                IconButton(onClick = {
-                    state.toggleCodeSpan()
-                }) {
+                IconButton(
+                    onClick = { state.toggleCodeSpan() },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Icon(Icons.Default.Code, "Code")
                 }
 
-                IconButton(onClick = {
-                    state.toggleUnorderedList()
-                }) {
+                IconButton(
+                    onClick = { state.toggleUnorderedList() },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "List")
                 }
             }
@@ -751,7 +781,7 @@ fun JiraCommentBox(
 
                 RichTextEditor(
                     state = state,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Text)
                 )
             }
 
@@ -763,25 +793,31 @@ fun JiraCommentBox(
                 horizontalArrangement = Arrangement.End
             ) {
 
-                TextButton(onClick = {
-                    isExpanded = false
-                    state.setHtml("")
-                }) {
+                TextButton(
+                    onClick = {
+                        isExpanded = false
+                        state.setHtml("")
+                    },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Text("Cancel")
                 }
 
                 Spacer(Modifier.width(8.dp))
 
-                Button(onClick = {
-                    val html = state.toHtml()
-                    if (html.isBlank()) return@Button
+                Button(
+                    onClick = {
+                        val html = state.toHtml()
+                        if (html.isBlank()) return@Button
 
-                    onSend(html)
+                        onSend(html)
 
-                    // reset
-                    state.setHtml("")
-                    isExpanded = false
-                }) {
+                        // reset
+                        state.setHtml("")
+                        isExpanded = false
+                    },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
                     Text("Comment")
                 }
             }
@@ -835,9 +871,10 @@ fun TicketDetailScreenV4(
                                 style = MaterialTheme.typography.titleLarge
                             )
 
-                            IconButton(onClick = {
-                                scope.launch { drawerState.close() }
-                            }) {
+                            IconButton(
+                                onClick = { scope.launch { drawerState.close() } },
+                                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                            ) {
                                 Icon(Icons.Default.Close, contentDescription = "Close")
                             }
                         }
@@ -979,9 +1016,11 @@ fun TicketDetailScreenV4(
                                 )
 
                                 Row(modifier = Modifier.fillMaxWidth().weight(.1f)) {
-                                    IconButton(onClick = {
-                                        onClickEditTicket(ticket)
-                                    }, modifier = Modifier.weight(.5f)) {
+                                    IconButton(
+                                        onClick = { onClickEditTicket(ticket) },
+                                        modifier = Modifier.weight(.5f)
+                                            .pointerHoverIcon(PointerIcon.Hand)
+                                    ) {
                                         Icon(
                                             Icons.Default.Edit,
                                             contentDescription = "Edit",
@@ -989,12 +1028,16 @@ fun TicketDetailScreenV4(
                                         )
                                     }
 
-                                    IconButton(onClick = {
-                                        scope.launch {
-                                            viewModel.loadTicketHistory(ticket.id.toString())
-                                            drawerState.open()
-                                        }
-                                    }, modifier = Modifier.weight(.5f)) {
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                viewModel.loadTicketHistory(ticket.id.toString())
+                                                drawerState.open()
+                                            }
+                                        },
+                                        modifier = Modifier.weight(.5f)
+                                            .pointerHoverIcon(PointerIcon.Hand)
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Default.History,
                                             contentDescription = "Profile",
@@ -1003,12 +1046,12 @@ fun TicketDetailScreenV4(
                                     }
                                 }
                             }
-                            
+
                             val descState = rememberRichTextState()
                             LaunchedEffect(ticket.description) {
                                 descState.setHtml(ticket.description)
                             }
-                            
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1040,7 +1083,7 @@ fun TicketDetailScreenV4(
                         item {
                             Column(modifier = Modifier.weight(1f)) {
                                 Spacer(Modifier.height(20.dp))
-                                
+
                                 ResourceHandler(
                                     state = commentsState,
                                     onLoading = {
@@ -1187,7 +1230,7 @@ fun EditTicketScreen(
 ) {
     val usersState by viewModel.usersState.collectAsState()
     val updateState by viewModel.updateTicketState.collectAsState()
-    
+
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
     }
@@ -1215,7 +1258,10 @@ fun EditTicketScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        CommonTopBar(title = "Edit Ticket", showBack = true, onBack = { /* Need to navigate back properly if injected but assumed standard */ })
+        CommonTopBar(
+            title = "Edit Ticket",
+            showBack = true,
+            onBack = { /* Need to navigate back properly if injected but assumed standard */ })
 
         Column(modifier = Modifier.padding(16.dp).verticalScroll(scrollState)) {
 
@@ -1230,14 +1276,14 @@ fun EditTicketScreen(
             )
 
             Spacer(Modifier.height(16.dp))
-            
+
             Text(
                 "Description",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             JiraRichTextEditor(
                 state = descState,
                 modifier = Modifier.fillMaxWidth()
@@ -1300,7 +1346,7 @@ fun EditTicketScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            Button(
+            JiraButton(
                 onClick = {
                     viewModel.updateTicket(
                         oldTicket = ticket,
@@ -1317,15 +1363,9 @@ fun EditTicketScreen(
                     )
                 },
                 enabled = title.isNotBlank() && updateState !is ResourceState.Loading,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                if (updateState is ResourceState.Loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                } else {
-                    Text("Save Changes")
-                }
-            }
-            
+                text = if (updateState is ResourceState.Loading) "Saving..." else "Save Changes"
+            )
+
             Spacer(Modifier.height(16.dp))
         }
     }
