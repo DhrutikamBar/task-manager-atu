@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Popup
@@ -108,7 +109,19 @@ fun DatePickerField(
     var expanded by remember { mutableStateOf(false) }
 
     val initialMillis = remember(selectedDate) { parseDateToEpochMillis(selectedDate) }
+
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+
+    /* val datePickerState = rememberDatePickerState()
+
+     LaunchedEffect(selectedDate) {
+         val millis = parseDateToEpochMillis(selectedDate)
+         if (millis != null) {
+             datePickerState.selectedDateMillis = millis
+         }
+     }*/
+
 
     Box {
         JiraTextField(
@@ -1018,6 +1031,27 @@ fun JiraCommentBoxV2(
     }
 }
 
+@Composable
+fun KeyValueRowItem(key: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "$key : ",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start,
+            color = Color.Gray, modifier = Modifier.weight(.5f)
+        )
+
+        Text(
+            value,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Start,
+            fontWeight = FontWeight.Normal,
+            color = Color.Gray, modifier = Modifier.weight(.5f)
+        )
+    }
+}
+
 /*** In V4 we have updated Ticket Details UI Completely by adding rich text editor **/
 @Composable
 fun TicketDetailScreenV4(
@@ -1150,12 +1184,32 @@ fun TicketDetailScreenV4(
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
 
+
+
                                                 Spacer(Modifier.height(4.dp))
 
-                                                Text(
-                                                    "${item.oldValue} ->  ${item.newValue}",
-                                                    style = MaterialTheme.typography.bodyLarge
-                                                )
+
+                                                // for description, we are storing contents in html format as we are using Rich Text Editor.
+                                                // So for that we have to parse it and show like normal text
+                                                if (item.fieldName.lowercase()
+                                                        .contains("description")
+                                                ) {
+                                                    Text(
+                                                        "${htmlToPlainText(item.oldValue ?: "")} ->  ${
+                                                            htmlToPlainText(
+                                                                item.newValue ?: ""
+                                                            )
+                                                        }",
+                                                        style = MaterialTheme.typography.bodyLarge
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        "${item.oldValue} ->  ${item.newValue}",
+                                                        style = MaterialTheme.typography.bodyLarge
+                                                    )
+                                                }
+
+
 
                                                 Spacer(Modifier.height(4.dp))
 
@@ -1166,7 +1220,7 @@ fun TicketDetailScreenV4(
                                                 )
 
                                                 Text(
-                                                    "On ${Utils.formatDateTime(item.changedAt?:"")}",
+                                                    "On ${Utils.formatDateTime(item.changedAt ?: "")}",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = Color.Gray
                                                 )
@@ -1224,17 +1278,23 @@ fun TicketDetailScreenV4(
                                 )
 
                                 Row(modifier = Modifier.fillMaxWidth().weight(.1f)) {
-                                    IconButton(
-                                        onClick = { onClickEditTicket(ticket) },
-                                        modifier = Modifier.weight(.5f)
-                                            .pointerHoverIcon(PointerIcon.Hand)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Edit",
-                                            modifier = Modifier.size(24.dp)
+                                    if (UserManager.isAdmin(AuthManager.userId) || UserManager.isSuperAdmin(
+                                            AuthManager.userId
                                         )
+                                    ) {
+                                        IconButton(
+                                            onClick = { onClickEditTicket(ticket) },
+                                            modifier = Modifier.weight(.5f)
+                                                .pointerHoverIcon(PointerIcon.Hand)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = "Edit",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
                                     }
+
 
                                     IconButton(
                                         onClick = {
@@ -1274,6 +1334,41 @@ fun TicketDetailScreenV4(
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
+                        }
+
+                        item {
+
+                            Spacer(Modifier.height(20.dp))
+                            Text(
+                                "Details",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(10.dp))
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        shape = RoundedCornerShape(11.dp)
+                                    ).padding(10.dp)
+                            ) {
+
+                                KeyValueRowItem(key = "Priority", value = ticket.priority ?: "")
+                                KeyValueRowItem(
+                                    key = "Due Date",
+                                    value = Utils.formatDateTime(ticket.dueDate ?: "")
+                                )
+                                KeyValueRowItem(
+                                    key = "Assigned To",
+                                    value = UserManager.getUserName(
+                                        ticket.assignedTo
+                                    )
+                                )
+                            }
+
+
                         }
 
                         item {
@@ -1345,9 +1440,11 @@ fun TicketDetailScreenV4(
                                                     )
                                                     Spacer(Modifier.width(8.dp))
                                                     Text(
-                                                        "On ${Utils.formatDateTime(
-                                                            comment.createdAt ?: ""
-                                                        )}",
+                                                        "On ${
+                                                            Utils.formatDateTime(
+                                                                comment.createdAt ?: ""
+                                                            )
+                                                        }",
                                                         style = MaterialTheme.typography.labelSmall,
                                                         color = Color.Gray
                                                     )
