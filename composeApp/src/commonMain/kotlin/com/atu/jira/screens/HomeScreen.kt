@@ -21,12 +21,13 @@ fun HomeScreen(
     onTasksClick: () -> Unit,
     onTaskClick: (Ticket) -> Unit, 
     onAddProject: () -> Unit,
+    onSearchClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
 
     Column(Modifier.fillMaxSize()) {
-        CommonTopBar(title = "Home", onLogout = onLogout)
+        CommonTopBar(title = "Home", onLogout = onLogout, onSearch = onSearchClick)
         
         SecondaryTabRow(selectedTabIndex = selectedTab) {
             Tab(

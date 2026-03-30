@@ -27,6 +27,10 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
         onNavControllerCreated(navController)
     }
 
+    val onSearchClick: () -> Unit = {
+        navController.navigate(SearchRoute)
+    }
+
     JiraTheme {
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             NavHost(
@@ -41,6 +45,35 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                             }
                         },
                         onSignupClick = { navController.navigate(SignupRoute) }
+                    )
+                }
+
+                composable<SearchRoute> {
+                    SearchScreen(
+                        onBack = { navController.popBackStack() },
+                        onTicketClick = { ticket ->
+                            navController.navigate(
+                                TicketDetailRoute(
+                                    id = ticket.id!!,
+                                    title = ticket.title,
+                                    description = ticket.description,
+                                    status = ticket.status,
+                                    priority = ticket.priority,
+                                    assignedTo = ticket.assignedTo,
+                                    projectId = ticket.projectId,
+                                    createdBy = ticket.createdBy,
+                                    startTime = ticket.startTime,
+                                    endTime = ticket.endTime,
+                                    dueDate = ticket.dueDate,
+                                    createdAt = ticket.createdAt,
+                                    ticketCode = ticket.ticketCode
+                                )
+                            )
+                        },
+                        onUserClick = {
+
+
+                        }
                     )
                 }
 
@@ -64,7 +97,8 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                         ),
                         onTicketUpdated = { ticket ->
                             navController.popBackStack()
-                        }
+                        },
+                        onSearchClick = onSearchClick
                     )
                 }
 
@@ -82,10 +116,11 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                 composable<HomeRoute> {
                     HomeScreen(
                         onProjectsClick = { project ->
-                            navController.navigate(BoardRoute(project.id ?: 0L, project.name))
+                            navController.navigate(BoardRoute(project.id, project.name))
                         },
                         onTasksClick = { /* logic for tasks handled internally in HomeScreen */ },
                         onAddProject = { navController.navigate(CreateProjectRoute) },
+                        onSearchClick = onSearchClick,
                         onLogout = {
                             AuthManager.logout()
                             navController.navigate(LoginRoute) {
@@ -106,7 +141,8 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                                     startTime = ticket.startTime,
                                     endTime = ticket.endTime,
                                     dueDate = ticket.dueDate,
-                                    createdAt = ticket.createdAt
+                                    createdAt = ticket.createdAt,
+                                    ticketCode =  ticket.ticketCode
                                 )
                             )
                         }
@@ -116,7 +152,12 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                 composable<BoardRoute> { backStackEntry ->
                     val route = backStackEntry.toRoute<BoardRoute>()
                     TicketBoardScreen(
-                        project = Project(id = route.projectId, name = route.projectName),
+                        project = Project(
+                            id = route.projectId, 
+                            name = route.projectName, 
+                            projectCode = "", // We only have ID and Name from route, this is problematic
+                            isActive = true
+                        ),
                         onTicketClick = { ticket ->
                             navController.navigate(
                                 TicketDetailRoute(
@@ -131,11 +172,13 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                                     startTime = ticket.startTime,
                                     endTime = ticket.endTime,
                                     dueDate = ticket.dueDate,
-                                    createdAt = ticket.createdAt
+                                    createdAt = ticket.createdAt,
+                                    ticketCode = ticket.ticketCode
                                 )
                             )
                         },
                         onBack = { navController.popBackStack() },
+                        onSearchClick = onSearchClick,
                         onAddTicket = {
                             navController.navigate(CreateTicketRoute(route.projectId, route.projectName))
                         },
@@ -151,9 +194,15 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                 composable<CreateTicketRoute> { backStackEntry ->
                     val route = backStackEntry.toRoute<CreateTicketRoute>()
                     CreateTicketScreen(
-                        project = Project(id = route.projectId, name = route.projectName),
+                        project = Project(
+                            id = route.projectId, 
+                            name = route.projectName,
+                            projectCode = "",
+                            isActive = true
+                        ),
                         onCreate = { navController.popBackStack() },
                         onBack = { navController.popBackStack() },
+                        onSearchClick = onSearchClick,
                         onLogout = {
                             AuthManager.logout()
                             navController.navigate(LoginRoute) {
@@ -169,6 +218,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                             navController.popBackStack()
                         },
                         onBack = { navController.popBackStack() },
+                        onSearchClick = onSearchClick,
                         onLogout = {
                             AuthManager.logout()
                             navController.navigate(LoginRoute) {
@@ -193,9 +243,11 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                             startTime = route.startTime,
                             endTime = route.endTime,
                             dueDate = route.dueDate,
-                            createdAt = route.createdAt
+                            createdAt = route.createdAt,
+                            ticketCode = route.ticketCode,
                         ),
                         onBack = { navController.popBackStack() },
+                        onSearchClick = onSearchClick,
                         onLogout = {
                             AuthManager.logout()
                             navController.navigate(LoginRoute) {

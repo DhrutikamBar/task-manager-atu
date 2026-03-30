@@ -1,7 +1,25 @@
 package com.atu.jira.model
 
+import com.atu.jira.auth.AuthManager
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+
+fun Ticket.toCreateRequest(): CreateTicketRequest {
+    return CreateTicketRequest(
+        projectId = projectId!!,
+        title = title,
+        description = description,
+        createdBy = AuthManager.userId!!,
+        priority = priority ?: "MEDIUM",
+        status = status,
+        assignedTo = assignedTo,
+        startTime = startTime,
+        endTime = endTime,
+        dueDate = dueDate
+    )
+}
 
 @Serializable
 data class User(
@@ -14,9 +32,34 @@ data class User(
 )
 
 @Serializable
-data class Project(
-    val id: Long? = null,
-    val name: String
+data class Project @OptIn(ExperimentalUuidApi::class) constructor(
+
+    @SerialName("id")
+    val id: String = Uuid.random().toString(),   // UUID → String
+
+    @SerialName("name")
+    val name: String,
+
+    @SerialName("project_code")
+    val projectCode: String,
+
+    @SerialName("description")
+    val description: String? = null,
+
+    @SerialName("created_by")
+    val createdBy: String? = null,   // ideally UUID later
+
+    @SerialName("ticket_sequence")
+    val ticketSequence: Long = 0,
+
+    @SerialName("created_at")
+    val createdAt: String? = null,
+
+    @SerialName("updated_at")
+    val updatedAt: String? = null,
+
+    @SerialName("is_active")
+    val isActive: Boolean = true
 )
 
 @Serializable
@@ -28,12 +71,36 @@ data class Ticket(
     var description: String,
     var status: String,
     val priority: String? = "medium",
-    @SerialName("project_id") val projectId: Long? = null,
+    @SerialName("project_id") val projectId: String? = null,
     @SerialName("assigned_to") var assignedTo: String? = null,
     @SerialName("created_by") val createdBy: String? = null,
     @SerialName("start_time") val startTime: String? = null,
     @SerialName("end_time") val endTime: String? = null,
-    @SerialName("due_date") val dueDate: String? = null
+    @SerialName("due_date") val dueDate: String? = null,
+    @SerialName("ticket_code") val ticketCode: String? = ""
+)
+
+@Serializable
+data class CreateTicketRequest(
+    @SerialName("p_project_id") val projectId: String,
+    @SerialName("p_title") val title: String,
+    @SerialName("p_description") val description: String,
+    @SerialName("p_created_by") val createdBy: String,
+    @SerialName("p_priority") val priority: String = "MEDIUM",
+    @SerialName("p_status") val status: String = "OPEN",
+    @SerialName("p_assigned_to") val assignedTo: String? = null,
+    @SerialName("p_start_time") val startTime: String? = null,
+    @SerialName("p_end_time") val endTime: String? = null,
+    @SerialName("p_due_date") val dueDate: String? = null
+)
+
+@Serializable
+data class TicketResponse(
+    @SerialName("ticket_id")
+    val ticketId: String,
+
+    @SerialName("ticket_code")
+    val ticketCode: String
 )
 
 @Serializable
@@ -57,7 +124,7 @@ data class UserData(
 )
 
 enum class Screen {
-    LOGIN, SIGNUP, HOME, PROJECTS, BOARD, TICKET_DETAIL, CREATE_TICKET, CREATE_PROJECT
+    LOGIN, SIGNUP, HOME, PROJECTS, BOARD, TICKET_DETAIL, CREATE_TICKET, CREATE_PROJECT, SEARCH
 }
 
 // Navigation Routes
@@ -65,8 +132,9 @@ enum class Screen {
 @Serializable @SerialName("signup") object SignupRoute
 @Serializable @SerialName("home") object HomeRoute
 @Serializable @SerialName("create_project") object CreateProjectRoute
-@Serializable @SerialName("board") data class BoardRoute(val projectId: Long, val projectName: String)
-@Serializable @SerialName("create_ticket") data class CreateTicketRoute(val projectId: Long, val projectName: String)
+@Serializable @SerialName("search") object SearchRoute
+@Serializable @SerialName("board") data class BoardRoute(val projectId: String, val projectName: String)
+@Serializable @SerialName("create_ticket") data class CreateTicketRoute(val projectId: String, val projectName: String)
 
 @Serializable @SerialName("ticket_detail") data class TicketDetailRoute(
     val id: String,
@@ -75,12 +143,13 @@ enum class Screen {
     val status: String,
     val priority: String? = null,
     val assignedTo: String? = null,
-    val projectId: Long? = null,
+    val projectId: String? = null,
     val createdBy: String? = null,
     val startTime: String? = null,
     val endTime: String? = null,
     val dueDate: String? = null,
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val ticketCode: String? = null
 )
 
 @Serializable @SerialName("edit_ticket") data class EditTicketRoute(
@@ -90,7 +159,7 @@ enum class Screen {
     val status: String,
     val priority: String? = null,
     val assignedTo: String? = null,
-    val projectId: Long? = null,
+    val projectId: String? = null,
     val createdBy: String? = null,
     val startTime: String? = null,
     val endTime: String? = null,

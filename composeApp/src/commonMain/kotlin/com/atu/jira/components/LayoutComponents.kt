@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -205,96 +206,114 @@ fun CommonTopBar(
     title: String,
     showBack: Boolean = false,
     onBack: (() -> Unit)? = null,
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onSearch: (() -> Unit)? = null
 ) {
     var showProfileMenu by remember { mutableStateOf(false) }
     val themeController = LocalThemeController.current
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .height(56.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().statusBarsPadding()
     ) {
-        if (showBack && onBack != null) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(Modifier.width(4.dp))
-        }
-
-        Image(
-            painter = painterResource(Res.drawable.ic_atu),
-            contentDescription = "Logo",
-            modifier = Modifier.size(50.dp)
-        )
-
-        Spacer(Modifier.width(12.dp))
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f),
-            maxLines = 1
-        )
-
-        IconButton(
-            onClick = { themeController.toggle() },
-            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .height(56.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (themeController.isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
-                contentDescription = "Toggle Theme"
-            )
-        }
+            if (showBack && onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+            }
 
-        Box {
+            Image(
+                painter = painterResource(Res.drawable.ic_atu),
+                contentDescription = "Logo",
+                modifier = Modifier.size(50.dp)
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1
+            )
+
+            if (onSearch != null) {
+                IconButton(
+                    onClick = onSearch,
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                }
+            }
+
             IconButton(
-                onClick = { showProfileMenu = true },
+                onClick = { themeController.toggle() },
                 modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    modifier = Modifier.size(24.dp)
+                    imageVector = if (themeController.isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = "Toggle Theme"
                 )
             }
-            
-            DropdownMenu(
-                expanded = showProfileMenu,
-                onDismissRequest = { showProfileMenu = false }
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "User Details",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+
+            Box {
+                IconButton(
+                    onClick = { showProfileMenu = true },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile",
+                        modifier = Modifier.size(24.dp)
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text("Email: ${AuthManager.email ?: "N/A"}")
-                    Text("Role: ${AuthManager.role ?: "User"}")
-                    AuthManager.userName?.let {
-                        Text("Name: $it")
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            showProfileMenu = false
-                            onLogout()
-                        },
-                        modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                    ) {
-                        Text("Logout", color = Color.White)
+                }
+                
+                DropdownMenu(
+                    expanded = showProfileMenu,
+                    onDismissRequest = { showProfileMenu = false }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "User Details",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text("Email: ${AuthManager.email ?: "N/A"}")
+                        Text("Role: ${AuthManager.role ?: "User"}")
+                        AuthManager.userName?.let {
+                            Text("Name: $it")
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                showProfileMenu = false
+                                onLogout()
+                            },
+                            modifier = Modifier.fillMaxWidth().pointerHoverIcon(PointerIcon.Hand),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        ) {
+                            Text("Logout", color = Color.White)
+                        }
                     }
                 }
             }

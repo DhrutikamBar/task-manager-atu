@@ -3,6 +3,7 @@ package com.atu.jira.repo
 import com.atu.jira.auth.AuthManager
 import com.atu.jira.model.*
 import com.atu.jira.model.network.*
+import com.atu.jira.repo.SupaBaseClient.client
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -18,7 +19,11 @@ import kotlin.time.Clock
 
 private const val API_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmaGd3dGhvbXRncGFsa2hsZnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNTg1MzUsImV4cCI6MjA4OTgzNDUzNX0.FyXXXeTZbVC4Xm8ok8fR5gHhYrsA6PK9UUXBREw9YK4"
-
+private const val RESEND_API_KEY = "re_a14Aagp3_KYd28RjM3KKywjcKg5M6ftJJ"
+private const val EMAIL_JS_SERVICE_ID = "service_nie1afr"
+private const val EMAIL_JS_EMAIL_TEMPLATE_ID_FOR_TICKET_ASSIGNMENT = "template_9kebpbp"
+private const val EMAIL_JS_EMAIL_TEMPLATE_ID_FOR_MENTIONS = "template_7rl9btb"
+private const val EMAIL_JS_PUBLIC_KEY = "FyceZqhfGUipB1Zuy"
 
 suspend fun getProjects(): List<Project> {
     return SupaBaseClient.client.get("/rest/v1/projects") {
@@ -42,7 +47,7 @@ suspend fun createProject(project: Project) {
     }
 }
 
-suspend fun getTickets(projectId: Long): List<Ticket> {
+suspend fun getTickets(projectId: String): List<Ticket> {
     return SupaBaseClient.client
         .get("/rest/v1/tickets?project_id=eq.$projectId") {
             headers {
@@ -64,6 +69,50 @@ suspend fun createTicket(ticket: Ticket) {
         }
 
         setBody(listOf(ticket))
+    }
+}
+
+suspend fun createTicketWithRPC(request: CreateTicketRequest): Ticket {
+    val response: List<Ticket> =
+        SupaBaseClient.client.post("/rest/v1/rpc/create_ticket") {
+            headers {
+                append("apikey", API_KEY)
+                append("Authorization", "Bearer $API_KEY")
+                append("Content-Type", "application/json")
+                append("Prefer", "return=representation")
+            }
+            setBody(request)
+        }.body()
+
+    return response.first() // ✅ extract first item
+}
+
+
+suspend fun sendEmailEmailJS(
+    toEmail: String,
+    ticketCode: String,
+    message: String,
+    actionType: String
+) {
+    val request = EmailJSRequest(
+        service_id = EMAIL_JS_SERVICE_ID,
+        template_id = if (actionType == "assign") EMAIL_JS_EMAIL_TEMPLATE_ID_FOR_TICKET_ASSIGNMENT else EMAIL_JS_EMAIL_TEMPLATE_ID_FOR_MENTIONS,
+        user_id = EMAIL_JS_PUBLIC_KEY,
+        template_params = TemplateParams(
+            to_email = toEmail,
+            ticket_code = ticketCode,
+            message = message
+        )
+    )
+
+    SupaBaseClient.client.post("https://api.emailjs.com/api/v1.0/email/send") {
+        contentType(ContentType.Application.Json)
+        headers {
+            append("Prefer", "return=minimal")
+            append("apikey", API_KEY)
+            append("Authorization", "Bearer $API_KEY")
+        }
+        setBody(request)
     }
 }
 
@@ -209,7 +258,7 @@ suspend fun getUsers(): List<User> {
 
 suspend fun getComments(ticketId: String): List<Comment> {
     return SupaBaseClient.client
-        .get("/rest/v1/comments?ticket_id=eq.$ticketId&order=created_at.asc"){
+        .get("/rest/v1/comments?ticket_id=eq.$ticketId&order=created_at.asc") {
             headers {
                 append("apikey", API_KEY)
                 append("Authorization", "Bearer $API_KEY")
@@ -246,13 +295,33 @@ suspend fun addTicketHistory(history: TicketHistory) {
     }
 }
 
+suspend fun searchUsers(query: String): List<User> {
+    return SupaBaseClient.client
+        .get("/rest/v1/users?name=ilike.*$query*") {
+            headers {
+                append("apikey", API_KEY)
+                append("Authorization", "Bearer $API_KEY")
+            }
+        }.body()
+}
+
+suspend fun searchTickets(query: String): List<Ticket> {
+    return SupaBaseClient.client
+        .get("/rest/v1/tickets?or=(title.ilike.*$query*,description.ilike.*$query*)") {
+            headers {
+                append("apikey", API_KEY)
+                append("Authorization", "Bearer $API_KEY")
+            }
+        }.body()
+}
+
 suspend fun updateTicketWithHistory(
     oldTicket: Ticket,
     newTicket: Ticket
 ) {
     try {
         // Prepare the payload dynamically mapping only fields that aren't null or changed
-        val patchPayload = mutableMapOf<String, String>()
+        val patchPayload = mutableMapOf<String, String?>()
         patchPayload["title"] = newTicket.title
         patchPayload["description"] = newTicket.description
         patchPayload["status"] = newTicket.status

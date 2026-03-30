@@ -19,6 +19,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.atu.jira.auth.AuthManager
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
@@ -26,15 +27,16 @@ import com.atu.jira.components.MainButton
 import com.atu.jira.components.ProjectShimmerItem
 import com.atu.jira.components.ResourceHandler
 import com.atu.jira.model.Project
-import com.atu.jira.repo.safeCall
+import com.atu.jira.users.UserManager
 import com.atu.jira.viewmodel.ProjectViewModel
 import com.atu.jira.utils.ResourceState
 
 @Composable
 fun ProjectListScreen(
     viewModel: ProjectViewModel = viewModel { ProjectViewModel() },
-    onProjectClick: (Project) -> Unit, 
+    onProjectClick: (Project) -> Unit,
     onAddProject: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onLogout: () -> Unit = {},
     showTopBar: Boolean = true // Added this parameter
 ) {
@@ -43,12 +45,23 @@ fun ProjectListScreen(
     LaunchedEffect(Unit) {
         viewModel.loadProjects()
     }
+    LaunchedEffect(Unit) {
+        viewModel.loadUsers()
+    }
+
+   /* LaunchedEffect(Unit){
+        sendEmailEmailJS(toEmail = "dhrutikam18@gmail.com", ticketCode = "TEST-1234", message = "Kindly Check it")
+    }*/
+
+    /*LaunchedEffect(Unit){
+        getUserDetails(AuthManager.userId!!)
+    }*/
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (showTopBar) {
-            CommonTopBar(title = "Projects", onLogout = onLogout)
+            CommonTopBar(title = "Projects", onLogout = onLogout, onSearch = onSearchClick)
         }
-        
+
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -57,10 +70,10 @@ fun ProjectListScreen(
             ) {
                 Text("Your Projects", style = MaterialTheme.typography.headlineSmall)
 
-                Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center){
+                Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center) {
                     JiraButton(
                         text = "+ New",
-                        enabled = true,
+                        enabled = UserManager.isSuperAdmin(AuthManager.userId),
                         onClick = {
                             onAddProject()
                         }
@@ -71,16 +84,13 @@ fun ProjectListScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            ResourceHandler(
-                state = projectsState,
-                onLoading = {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(5) { 
-                            ProjectShimmerItem() 
-                        }
+            ResourceHandler(state = projectsState, onLoading = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(5) {
+                        ProjectShimmerItem()
                     }
                 }
-            ) { projects ->
+            }) { projects ->
                 if (projects.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("No projects found. Create one to get started!", color = Color.Gray)
@@ -117,9 +127,9 @@ fun ProjectListScreen(
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
-                                    
+
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    
+
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = project.name,
@@ -128,12 +138,14 @@ fun ProjectListScreen(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = "Project ID: ${project.id ?: "Unknown"}",
+                                            text = "Code: ${project.projectCode}",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = 0.7f
+                                            )
                                         )
                                     }
-                                    
+
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                         contentDescription = "Open Project",
@@ -154,9 +166,12 @@ fun CreateProjectScreen(
     viewModel: ProjectViewModel = viewModel { ProjectViewModel() },
     onCreate: (Project) -> Unit,
     onBack: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     var projectName by remember { mutableStateOf("") }
+    var projectCode by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
     val createProjectState by viewModel.createProjectState.collectAsState()
 
     Column(
@@ -166,7 +181,8 @@ fun CreateProjectScreen(
             title = "New Project",
             showBack = true,
             onBack = onBack,
-            onLogout = onLogout
+            onLogout = onLogout,
+            onSearch = onSearchClick
         )
 
         Column(modifier = Modifier.padding(16.dp)) {
@@ -180,12 +196,40 @@ fun CreateProjectScreen(
                 enabled = createProjectState !is ResourceState.Loading
             )
 
+            Spacer(Modifier.height(16.dp))
+
+            JiraTextField(
+                value = projectCode,
+                onValueChange = { if (it.length <= 5) projectCode = it.uppercase() },
+                label = "Project Code (e.g. ATU)",
+                modifier = Modifier.fillMaxWidth(),
+                enabled = createProjectState !is ResourceState.Loading
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            JiraTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = "Description (Optional)",
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                enabled = createProjectState !is ResourceState.Loading
+            )
+
             Spacer(Modifier.height(24.dp))
 
-            JiraButton(
+            MainButton(
                 text = if (createProjectState is ResourceState.Loading) "Creating..." else "Create Project",
-                enabled = projectName.isNotBlank() && createProjectState !is ResourceState.Loading,
-                onClick = { viewModel.addProject(projectName, onCreate) }
+                enabled = projectName.isNotBlank() && projectCode.isNotBlank() && createProjectState !is ResourceState.Loading,
+                onClick = {
+                    viewModel.addProject(
+                        projectName,
+                        projectCode,
+                        description.takeIf { it.isNotBlank() },
+                        onCreate
+                    )
+                }
             )
 
             if (createProjectState is ResourceState.Error) {

@@ -28,16 +28,17 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.atu.jira.auth.AuthManager
 import com.atu.jira.components.CommentShimmerItem
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.components.HistoryShimmerItem
 import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
-import com.atu.jira.components.LoadingUI
 import com.atu.jira.components.MainButton
 import com.atu.jira.components.ResourceHandler
 import com.atu.jira.components.TicketShimmerItem
@@ -45,13 +46,18 @@ import com.atu.jira.model.Project
 import com.atu.jira.model.Status
 import com.atu.jira.model.Ticket
 import com.atu.jira.model.User
+import com.atu.jira.notification.NotificationHelper
+import com.atu.jira.users.UserManager
 import com.atu.jira.viewmodel.TicketViewModel
 import com.atu.jira.utils.ResourceState
+import com.atu.jira.utils.Utils
+import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+
 
 // --- Date Helpers ---
 fun formatEpochMillisToDate(millis: Long): String {
@@ -240,12 +246,13 @@ fun TicketBoardScreen(
     onTicketClick: (Ticket) -> Unit,
     onBack: () -> Unit,
     onAddTicket: () -> Unit,
+    onSearchClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     val ticketsState by viewModel.ticketsState.collectAsState()
 
     LaunchedEffect(project.id) {
-        viewModel.loadTickets(project.id ?: 0L)
+        viewModel.loadTickets(project.id)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -253,7 +260,8 @@ fun TicketBoardScreen(
             title = project.name,
             showBack = true,
             onBack = onBack,
-            onLogout = onLogout
+            onLogout = onLogout,
+            onSearch = onSearchClick
         )
 
         HorizontalDivider()
@@ -268,7 +276,9 @@ fun TicketBoardScreen(
             Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center) {
                 JiraButton(
                     text = "+ New Ticket",
-                    enabled = true,
+                    enabled = UserManager.isAdmin(AuthManager.userId) || UserManager.isSuperAdmin(
+                        AuthManager.userId
+                    ),
                     onClick = {
                         onAddTicket()
                     }
@@ -280,63 +290,124 @@ fun TicketBoardScreen(
         ResourceHandler(
             state = ticketsState,
             onLoading = {
-                Row(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    repeat(3) {
-                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Column(Modifier.padding(8.dp)) {
-                                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        items(4) {
-                                            TicketShimmerItem()
-                                        }
-                                    }
+                BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+                    val isWideScreen = maxWidth > 600.dp
+                    if (isWideScreen) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            repeat(3) {
+                                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    BoardColumnSkeleton()
                                 }
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            repeat(3) {
+                                BoardColumnSkeleton()
                             }
                         }
                     }
                 }
             }
         ) { tickets ->
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                StatusColumn(
-                    title = "To Do",
-                    tickets = tickets.filter { it.status == Status.TODO.value },
-                    onTicketClick = onTicketClick,
-                    onMove = {
-                        viewModel.moveTicket(
-                            it,
-                            Status.IN_PROGRESS.value,
-                            project.id ?: 0L
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+                val isWideScreen = maxWidth > 600.dp
+
+                if (isWideScreen) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        StatusColumn(
+                            title = "To Do",
+                            tickets = tickets.filter { it.status == Status.TODO.value },
+                            onTicketClick = onTicketClick,
+                            onMove = {
+                                viewModel.moveTicket(
+                                    it,
+                                    Status.IN_PROGRESS.value,
+                                    project.id
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
                         )
-                    },
-                    modifier = Modifier.weight(1f)
-                )
 
-                StatusColumn(
-                    title = "In Progress",
-                    tickets = tickets.filter { it.status == Status.IN_PROGRESS.value },
-                    onTicketClick = onTicketClick,
-                    onMove = { viewModel.moveTicket(it, Status.DONE.value, project.id ?: 0L) },
-                    modifier = Modifier.weight(1f)
-                )
+                        StatusColumn(
+                            title = "In Progress",
+                            tickets = tickets.filter { it.status == Status.IN_PROGRESS.value },
+                            onTicketClick = onTicketClick,
+                            onMove = { viewModel.moveTicket(it, Status.DONE.value, project.id) },
+                            modifier = Modifier.weight(1f)
+                        )
 
-                StatusColumn(
-                    title = "Done",
-                    tickets = tickets.filter { it.status == Status.DONE.value },
-                    onTicketClick = onTicketClick,
-                    onMove = null,
-                    modifier = Modifier.weight(1f)
-                )
+                        StatusColumn(
+                            title = "Done",
+                            tickets = tickets.filter { it.status == Status.DONE.value },
+                            onTicketClick = onTicketClick,
+                            onMove = null,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else {
+                    // Mobile: Vertically stacked columns
+                    Column(
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        StatusColumn(
+                            title = "To Do",
+                            tickets = tickets.filter { it.status == Status.TODO.value },
+                            onTicketClick = onTicketClick,
+                            onMove = {
+                                viewModel.moveTicket(
+                                    it,
+                                    Status.IN_PROGRESS.value,
+                                    project.id
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+                        )
+
+                        StatusColumn(
+                            title = "In Progress",
+                            tickets = tickets.filter { it.status == Status.IN_PROGRESS.value },
+                            onTicketClick = onTicketClick,
+                            onMove = { viewModel.moveTicket(it, Status.DONE.value, project.id) },
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+                        )
+
+                        StatusColumn(
+                            title = "Done",
+                            tickets = tickets.filter { it.status == Status.DONE.value },
+                            onTicketClick = onTicketClick,
+                            onMove = null,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BoardColumnSkeleton() {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth().height(400.dp)
+    ) {
+        Column(Modifier.padding(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(4) {
+                    TicketShimmerItem()
+                }
             }
         }
     }
@@ -423,6 +494,7 @@ fun CreateTicketScreen(
     viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onCreate: (Ticket) -> Unit,
     onBack: () -> Unit,
+    onSearchClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     var title by remember { mutableStateOf("") }
@@ -443,7 +515,13 @@ fun CreateTicketScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        CommonTopBar(title = "New Ticket", showBack = true, onBack = onBack, onLogout = onLogout)
+        CommonTopBar(
+            title = "New Ticket",
+            showBack = true,
+            onBack = onBack,
+            onLogout = onLogout,
+            onSearch = onSearchClick
+        )
 
         Column(
             modifier = Modifier
@@ -529,18 +607,21 @@ fun CreateTicketScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            JiraButton(
+            MainButton(
                 onClick = {
-                    viewModel.addTicket(
-                        title = title,
-                        description = descriptionState.toHtml(),
-                        status = status,
-                        priority = priority,
-                        project = project,
-                        selectedUser = selectedUser,
-                        startTime = startTime.takeIf { it.isNotBlank() },
-                        endTime = endTime.takeIf { it.isNotBlank() },
-                        dueDate = dueDate.takeIf { it.isNotBlank() },
+                    viewModel.createTicketWithRPCFunction(
+                        Ticket(
+                            title = title,
+                            description = descriptionState.toHtml(),
+                            status = status,
+                            priority = priority,
+                            projectId = project.id,
+                            assignedTo = selectedUser?.id,
+                            createdBy = AuthManager.userId,
+                            startTime = startTime.takeIf { it.isNotBlank() },
+                            endTime = endTime.takeIf { it.isNotBlank() },
+                            dueDate = dueDate.takeIf { it.isNotBlank() }
+                        ),
                         onComplete = onCreate
                     )
                 },
@@ -658,7 +739,7 @@ fun TicketCardV2(
                     }
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = ticket.assignedTo ?: "Unassigned",
+                        text = UserManager.getUserName(ticket.assignedTo),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
@@ -691,134 +772,246 @@ fun getTicketColor(ticket: Ticket): Color {
     return colors[(ticket.title.hashCode().absoluteValue) % colors.size]
 }
 
+fun extractMentionedUserIds(text: String): List<String> {
+    return Regex("@\\{(.*?)\\}")
+        .findAll(text)
+        .map { it.groupValues[1] }
+        .toList()
+}
+
+fun stripHtml(html: String): String {
+    return html
+        .replace(Regex("(?i)<br\\s*/?>"), " ")
+        .replace(Regex("(?i)</p>"), " ")
+        .replace(Regex("<[^>]*>"), "")
+        .replace("&nbsp;", " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+fun insertMention(user: User, state: RichTextState) {
+    val currentHtml = state.toHtml()
+    val plain = stripHtml(currentHtml)
+    val words = plain.split(" ").toMutableList()
+
+    if (words.isNotEmpty()) {
+        words[words.lastIndex] = "@${UserManager.getUserName(user.id)}"
+    } else {
+        words.add("@${UserManager.getUserName(user.id)}")
+    }
+
+    val newText = words.joinToString(" ")
+    state.setHtml("<p>$newText</p>")
+}
+
+
+fun htmlToPlainText(html: String): String {
+    return html
+        .replace("&commat;", "@")
+        .replace("&nbsp;", " ")
+        .replace(Regex("<[^>]*>"), "") // remove tags
+        .trim()
+}
+
+fun cleanEmailMessage(html: String): String {
+    return html
+        .replace("&commat;", "@")
+        .replace("&nbsp;", " ")
+        .replace(Regex("<[^>]*>"), "") // remove HTML tags
+        .trim()
+}
+
 @Composable
-fun JiraCommentBox(
+fun JiraCommentBoxV2(
+    ticket: Ticket,
+    users: List<User>,
     onSend: (String) -> Unit
 ) {
     val state = rememberRichTextState()
     var isExpanded by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 100.dp)
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(12.dp)
-            )
-            .padding(12.dp)
-    ) {
+    var mentionQuery by remember { mutableStateOf("") }
+    var showSuggestions by remember { mutableStateOf(false) }
+    var suggestions by remember { mutableStateOf<List<User>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+    val selectedMentions = remember { mutableStateListOf<User>() }
 
-        // 🔹 COLLAPSED VIEW
-        if (!isExpanded) {
-            Text(
-                "Add a comment...",
-                color = Color.Gray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isExpanded = true }
-                    .pointerHoverIcon(PointerIcon.Hand)
-                    .padding(8.dp)
-            )
+    LaunchedEffect(Unit) {
+        snapshotFlow { state.annotatedString.text }
+            .collect { text ->
+
+                println("TEXT: $text")
+
+                val lastWord = text.substringAfterLast(" ").trim()
+
+                println("LAST WORD: $lastWord")
+
+                if (lastWord.startsWith("@")) {
+                    mentionQuery = lastWord.removePrefix("@")
+
+                    println("ALL_USERS: ${users}")
+                    suggestions = users
+                        .filter {
+                            it.name.contains(mentionQuery, ignoreCase = true)
+                        }
+                        .take(5)
+
+                    showSuggestions = suggestions.isNotEmpty()
+
+                    println("SUGGESTIONS: ${suggestions.map { it.name }}")
+                } else {
+                    showSuggestions = false
+                }
+            }
+    }
+
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 100.dp)
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(12.dp)
+                )
+                .padding(12.dp)
+        ) {
+            if (!isExpanded) {
+                Text(
+                    "Add a comment...",
+                    color = Color.Gray,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isExpanded = true }
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .padding(8.dp)
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    IconButton(
+                        onClick = { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Icon(Icons.Default.FormatBold, "Bold")
+                    }
+                    IconButton(
+                        onClick = { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Icon(Icons.Default.FormatItalic, "Italic")
+                    }
+                    IconButton(
+                        onClick = { state.toggleCodeSpan() },
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Icon(Icons.Default.Code, "Code")
+                    }
+                    IconButton(
+                        onClick = { state.toggleUnorderedList() },
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "List")
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surface,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(8.dp)
+                ) {
+                    if (state.toHtml().isEmpty() || stripHtml(state.toHtml()).isEmpty()) {
+                        Text("Write a comment...", color = Color.Gray)
+                    }
+                    RichTextEditor(
+                        state = state,
+                        modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Text)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = {
+                            isExpanded = false
+                            state.setHtml("")
+                        },
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Text("Cancel")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val html = state.toHtml()
+                            if (html.isBlank()) return@Button
+                            // val mentionedIds = extractMentionedUserIds(html)
+                            val filteredMentioned = selectedMentions.filter { itemUser ->
+                                htmlToPlainText(html).contains("@${itemUser.name}")
+                            }
+                            println("filtered mentioned ids : $filteredMentioned")
+                            val validIds = filteredMentioned.map { it.id }
+                            println("valid mentioned ids : $validIds")
+                            scope.launch {
+                                NotificationHelper.notifyMentionedUsers(
+                                    validIds,
+                                    ticket,
+                                    cleanEmailMessage(html)
+                                )
+                            }
+                            onSend(html)
+                            state.setHtml("")
+                            isExpanded = false
+                        },
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Text("Comment")
+                    }
+                }
+            }
         }
 
-        // 🔹 EXPANDED VIEW
-        else {
-
-            // ✏️ TOOLBAR
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start
+        if (showSuggestions) {
+            Popup(
+                alignment = Alignment.TopStart,
+                onDismissRequest = { showSuggestions = false },
+                offset = IntOffset(0, 100),
+                properties = PopupProperties(focusable = false)
             ) {
-
-                IconButton(
-                    onClick = { state.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold)) },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                Card(
+                    modifier = Modifier
+                        .width(300.dp)
+                        .padding(horizontal = 16.dp),
+                    elevation = CardDefaults.cardElevation(8.dp)
                 ) {
-                    Icon(Icons.Default.FormatBold, "Bold")
-                }
-
-                IconButton(
-                    onClick = { state.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic)) },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                ) {
-                    Icon(Icons.Default.FormatItalic, "Italic")
-                }
-
-                IconButton(
-                    onClick = { state.toggleCodeSpan() },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                ) {
-                    Icon(Icons.Default.Code, "Code")
-                }
-
-                IconButton(
-                    onClick = { state.toggleUnorderedList() },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "List")
-                }
-            }
-
-            // ✏️ EDITOR
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surface,
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(8.dp)
-            ) {
-
-                if (state.toHtml().isEmpty()) {
-                    Text(
-                        "Write a comment...",
-                        color = Color.Gray
-                    )
-                }
-
-                RichTextEditor(
-                    state = state,
-                    modifier = Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Text)
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // 🔹 ACTIONS
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-
-                TextButton(
-                    onClick = {
-                        isExpanded = false
-                        state.setHtml("")
-                    },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                ) {
-                    Text("Cancel")
-                }
-
-                Spacer(Modifier.width(8.dp))
-
-                Button(
-                    onClick = {
-                        val html = state.toHtml()
-                        if (html.isBlank()) return@Button
-
-                        onSend(html)
-
-                        // reset
-                        state.setHtml("")
-                        isExpanded = false
-                    },
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                ) {
-                    Text("Comment")
+                    Column {
+                        suggestions.forEach { user ->
+                            Text(
+                                text = user.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedMentions.add(user)
+                                        insertMention(user, state)
+                                        println("selected mention size: ${selectedMentions.size}")
+                                        showSuggestions = false
+                                    }
+                                    .padding(12.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -831,17 +1024,20 @@ fun TicketDetailScreenV4(
     ticket: Ticket,
     viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onBack: () -> Unit,
+    onSearchClick: () -> Unit,
     onLogout: () -> Unit,
     onClickEditTicket: (Ticket) -> Unit
 ) {
     val commentsState by viewModel.commentsState.collectAsState()
     val historyState by viewModel.historyState.collectAsState()
+    val usersState by viewModel.usersState.collectAsState()
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(ticket.id) {
         viewModel.loadComments(ticket.id.toString())
+        viewModel.loadUsers() // Load users for mentions
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -896,8 +1092,8 @@ fun TicketDetailScreenV4(
                                     }
                                 }
                             }
-                        ) { history ->
-                            if (history.isEmpty()) {
+                        ) { historyItems ->
+                            if (historyItems.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
@@ -915,7 +1111,7 @@ fun TicketDetailScreenV4(
                                         .padding(horizontal = 16.dp),
                                     contentPadding = PaddingValues(vertical = 12.dp)
                                 ) {
-                                    items(history) { item ->
+                                    items(historyItems) { item ->
                                         Row(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
@@ -964,13 +1160,13 @@ fun TicketDetailScreenV4(
                                                 Spacer(Modifier.height(4.dp))
 
                                                 Text(
-                                                    "By ${item.changedBy}",
+                                                    "By ${UserManager.getUserName(item.changedBy)}",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = Color.Gray
                                                 )
 
                                                 Text(
-                                                    "On ${item.changedAt}",
+                                                    "On ${Utils.formatDateTime(item.changedAt?:"")}",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = Color.Gray
                                                 )
@@ -992,7 +1188,8 @@ fun TicketDetailScreenV4(
                         title = "Ticket Details",
                         showBack = true,
                         onBack = onBack,
-                        onLogout = onLogout
+                        onLogout = onLogout,
+                        onSearch = onSearchClick
                     )
                     HorizontalDivider()
 
@@ -1004,7 +1201,18 @@ fun TicketDetailScreenV4(
                             bottom = 11.dp
                         )
                     ) {
+
                         item {
+                            Text(
+                                text = "${ticket.ticketCode}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+
+                                )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                        item {
+
                             Row(
                                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1075,7 +1283,9 @@ fun TicketDetailScreenV4(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            JiraCommentBox { htmlComment ->
+                            Spacer(Modifier.height(10.dp))
+                            val users = UserManager.getAllUsers()
+                            JiraCommentBoxV2(ticket, users) { htmlComment ->
                                 viewModel.addCommentToTicket(ticket.id.toString(), htmlComment)
                             }
                         }
@@ -1083,16 +1293,17 @@ fun TicketDetailScreenV4(
                         item {
                             Column(modifier = Modifier.weight(1f)) {
                                 Spacer(Modifier.height(20.dp))
+                                Text(
+                                    "Comments",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.height(10.dp))
 
                                 ResourceHandler(
                                     state = commentsState,
                                     onLoading = {
                                         Spacer(Modifier.height(20.dp))
-                                        Text(
-                                            "Comments",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
                                         Column {
                                             repeat(3) {
                                                 CommentShimmerItem()
@@ -1100,14 +1311,11 @@ fun TicketDetailScreenV4(
                                         }
                                     }
                                 ) { comments ->
-                                    Spacer(Modifier.height(20.dp))
-                                    Text(
-                                        "Comments",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
                                     comments.forEach { comment ->
-                                        Row(modifier = Modifier.fillMaxWidth()) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.Top
+                                        ) {
                                             // 🔹 Avatar
                                             Box(
                                                 modifier = Modifier
@@ -1119,7 +1327,8 @@ fun TicketDetailScreenV4(
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
-                                                    comment.createdBy?.take(1)?.uppercase() ?: "U",
+                                                    text = UserManager.getUserName(comment.createdBy)
+                                                        .take(1).uppercase(),
                                                     style = MaterialTheme.typography.labelLarge,
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
@@ -1131,12 +1340,14 @@ fun TicketDetailScreenV4(
                                                 // 🔹 Name + Time
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Text(
-                                                        comment.createdBy ?: "User",
+                                                        UserManager.getUserName(comment.createdBy),
                                                         style = MaterialTheme.typography.labelLarge
                                                     )
                                                     Spacer(Modifier.width(8.dp))
                                                     Text(
-                                                        comment.createdAt ?: "",
+                                                        "On ${Utils.formatDateTime(
+                                                            comment.createdAt ?: ""
+                                                        )}",
                                                         style = MaterialTheme.typography.labelSmall,
                                                         color = Color.Gray
                                                     )
@@ -1226,6 +1437,7 @@ fun TaskListScreen(
 fun EditTicketScreen(
     ticket: Ticket,
     onTicketUpdated: (Ticket) -> Unit,
+    onSearchClick: () -> Unit,
     viewModel: TicketViewModel = viewModel { TicketViewModel() },
 ) {
     val usersState by viewModel.usersState.collectAsState()
@@ -1261,7 +1473,9 @@ fun EditTicketScreen(
         CommonTopBar(
             title = "Edit Ticket",
             showBack = true,
-            onBack = { /* Need to navigate back properly if injected but assumed standard */ })
+            onBack = { /* Need to navigate back properly if injected but assumed standard */ },
+            onSearch = onSearchClick
+        )
 
         Column(modifier = Modifier.padding(16.dp).verticalScroll(scrollState)) {
 
@@ -1346,7 +1560,7 @@ fun EditTicketScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            JiraButton(
+            MainButton(
                 onClick = {
                     viewModel.updateTicket(
                         oldTicket = ticket,
@@ -1358,7 +1572,7 @@ fun EditTicketScreen(
                         startTime = startTime.takeIf { it.isNotBlank() },
                         endTime = endTime.takeIf { it.isNotBlank() },
                         dueDate = dueDate.takeIf { it.isNotBlank() },
-                        projectId = ticket.projectId ?: 0L,
+                        projectId = ticket.projectId ?: "",
                         onTicketUpdated = onTicketUpdated
                     )
                 },
