@@ -247,7 +247,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
 
                 composable<TicketDetailRouteV2> { backStackEntry ->
                     val route = backStackEntry.toRoute<TicketDetailRouteV2>()
-                    TicketDetailScreenV5(
+                    TicketDetailScreenV6(
                         ticketCode = route.ticketCode ?: "",
                         onBack = { navController.popBackStack() },
                         onSearchClick = onSearchClick,

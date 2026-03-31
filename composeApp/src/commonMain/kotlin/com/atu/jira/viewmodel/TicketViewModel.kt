@@ -23,6 +23,7 @@ import com.atu.jira.repo.addComment
 import com.atu.jira.repo.createTicketWithRPC
 import com.atu.jira.repo.getTicketByTicketCode
 import com.atu.jira.repo.getTicketHistory
+import com.atu.jira.repo.getTicketsByUserId
 import com.atu.jira.users.UserManager
 import com.atu.jira.utils.ResourceState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,11 +60,18 @@ class TicketViewModel : ViewModel() {
     val ticketByTicketCodeState = MutableStateFlow<ResourceState<Ticket?>>(ResourceState.Loading)
 
 
+    private val _allTicketsByUserIdState =
+        MutableStateFlow<ResourceState<List<Ticket>>>(ResourceState.Idle)
+    val allTicketsByUserIdState: StateFlow<ResourceState<List<Ticket>>> =
+        _allTicketsByUserIdState.asStateFlow()
+
+
     fun fetchTicketByTicketCode(ticketCode: String) {
         viewModelScope.launch {
             ticketByTicketCodeState.value = ResourceState.Loading
             try {
-                ticketByTicketCodeState.value = ResourceState.Success(getTicketByTicketCode(ticketCode))
+                ticketByTicketCodeState.value =
+                    ResourceState.Success(getTicketByTicketCode(ticketCode))
             } catch (e: Exception) {
                 ticketByTicketCodeState.value = ResourceState.Error(e.message ?: "Error")
             }
@@ -92,6 +100,17 @@ class TicketViewModel : ViewModel() {
         }
     }
 
+    fun getAllTicketsByUserId(userId: String) {
+        viewModelScope.launch {
+            _allTicketsState.value = ResourceState.Loading
+            try {
+                _allTicketsState.value = ResourceState.Success(getTicketsByUserId(userId))
+            } catch (e: Exception) {
+                _allTicketsState.value = ResourceState.Error(e.message ?: "Failed to load tasks")
+            }
+        }
+    }
+
     fun loadUsers() {
         viewModelScope.launch {
             _usersState.value = ResourceState.Loading
@@ -111,9 +130,11 @@ class TicketViewModel : ViewModel() {
             try {
 
 
-                _createTicketState.value = ResourceState.Success(createTicketWithRPC(
-                    ticket.toCreateRequest()
-                ))
+                _createTicketState.value = ResourceState.Success(
+                    createTicketWithRPC(
+                        ticket.toCreateRequest()
+                    )
+                )
 
                 // extract ticket from the response
                 val successResponse = _createTicketState.value as ResourceState.Success<Ticket>
@@ -126,7 +147,6 @@ class TicketViewModel : ViewModel() {
                 onComplete(newTicket)
                 // refresh list
                 loadTickets(ticket.projectId!!)
-
 
 
             } catch (e: Exception) {
@@ -239,7 +259,7 @@ class TicketViewModel : ViewModel() {
         }
     }
 
-    fun addCommentToTicket(ticketId: String, content: String,parentId: String) {
+    fun addCommentToTicket(ticketId: String, content: String, parentId: String) {
         viewModelScope.launch {
             try {
                 val newComment = Comment(

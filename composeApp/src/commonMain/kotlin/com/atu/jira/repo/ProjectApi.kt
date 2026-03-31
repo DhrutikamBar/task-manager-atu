@@ -49,6 +49,18 @@ suspend fun createProject(project: Project) {
     }
 }
 
+suspend fun getTicketsByUserId(userId: String): List<Ticket> {
+    return SupaBaseClient.client.get("/rest/v1/tickets") {
+        url {
+            parameters.append("assigned_to", "eq.$userId")
+        }
+        headers {
+            append("apikey", API_KEY)
+            append("Authorization", "Bearer $API_KEY")
+        }
+    }.body()
+}
+
 suspend fun getTickets(projectId: String): List<Ticket> {
     return SupaBaseClient.client
         .get("/rest/v1/tickets?project_id=eq.$projectId") {
