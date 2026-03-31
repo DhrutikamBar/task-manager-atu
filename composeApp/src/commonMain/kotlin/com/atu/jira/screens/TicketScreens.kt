@@ -21,6 +21,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -43,11 +47,13 @@ import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.MainButton
 import com.atu.jira.components.ResourceHandler
 import com.atu.jira.components.TicketShimmerItem
+import com.atu.jira.model.Comment
 import com.atu.jira.model.Project
 import com.atu.jira.model.Status
 import com.atu.jira.model.Ticket
 import com.atu.jira.model.User
 import com.atu.jira.notification.NotificationHelper
+import com.atu.jira.repo.getTicketByTicketCode
 import com.atu.jira.users.UserManager
 import com.atu.jira.viewmodel.TicketViewModel
 import com.atu.jira.utils.ResourceState
@@ -1381,7 +1387,11 @@ fun TicketDetailScreenV4(
                             Spacer(Modifier.height(10.dp))
                             val users = UserManager.getAllUsers()
                             JiraCommentBoxV2(ticket, users) { htmlComment ->
-                                viewModel.addCommentToTicket(ticket.id.toString(), htmlComment)
+                                viewModel.addCommentToTicket(
+                                    ticket.id.toString(),
+                                    htmlComment,
+                                    parentId = ""
+                                )
                             }
                         }
 
@@ -1406,81 +1416,20 @@ fun TicketDetailScreenV4(
                                         }
                                     }
                                 ) { comments ->
-                                    comments.forEach { comment ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.Top
-                                        ) {
-                                            // 🔹 Avatar
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(36.dp)
-                                                    .background(
-                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                                        CircleShape
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = UserManager.getUserName(comment.createdBy)
-                                                        .take(1).uppercase(),
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-
-                                            Spacer(Modifier.width(12.dp))
-
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                // 🔹 Name + Time
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Text(
-                                                        UserManager.getUserName(comment.createdBy),
-                                                        style = MaterialTheme.typography.labelLarge
-                                                    )
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text(
-                                                        "On ${
-                                                            Utils.formatDateTime(
-                                                                comment.createdAt ?: ""
-                                                            )
-                                                        }",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = Color.Gray
-                                                    )
-                                                }
-
-                                                Spacer(Modifier.height(6.dp))
-
-                                                // 🔹 Content
-                                                val state = rememberRichTextState()
-                                                LaunchedEffect(comment.content) {
-                                                    state.setHtml(comment.content ?: "")
-                                                }
-
-                                                Box(
-                                                    modifier = Modifier
-                                                        .background(
-                                                            MaterialTheme.colorScheme.surfaceVariant,
-                                                            RoundedCornerShape(8.dp)
-                                                        )
-                                                        .padding(10.dp)
-                                                ) {
-                                                    RichText(
-                                                        state = state,
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
-                                                }
-
-                                                Spacer(Modifier.height(12.dp))
-
-                                                HorizontalDivider(
-                                                    color = Color.LightGray.copy(alpha = 0.4f)
-                                                )
+                                    val parentComments = comments.filter { it.parentId == null }
+                                    fun getReplies(parentId: String): List<Comment> {
+                                        return comments.filter { it.parentId == parentId }
+                                    }
+                                    parentComments.forEach { parentCommentItem ->
+                                        CommentItem(parentCommentItem, ticket = ticket)
+                                        val replies = getReplies(parentCommentItem.id ?: "")
+                                        if (replies.isNotEmpty()) {
+                                            replies.forEach { reply ->
+                                                ReplyItemForComment(reply)
                                             }
                                         }
 
-                                        Spacer(Modifier.height(12.dp))
+
                                     }
                                 }
                             }
@@ -1490,6 +1439,602 @@ fun TicketDetailScreenV4(
             }
         }
     }
+}
+
+/*** In V5 we have updated routing feature web  **/
+@Composable
+fun TicketDetailScreenV5(
+    ticketCode: String,
+    viewModel: TicketViewModel = viewModel { TicketViewModel() },
+    onBack: () -> Unit,
+    onSearchClick: () -> Unit,
+    onLogout: () -> Unit,
+    onClickEditTicket: (Ticket) -> Unit
+) {
+    val commentsState by viewModel.commentsState.collectAsState()
+    val historyState by viewModel.historyState.collectAsState()
+    val usersState by viewModel.usersState.collectAsState()
+
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val fetchTicketState by viewModel.ticketByTicketCodeState.collectAsState()
+
+    LaunchedEffect(ticketCode) {
+        viewModel.fetchTicketByTicketCode(ticketCode)
+        viewModel.loadUsers()
+    }
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            gesturesEnabled = false,
+            drawerContent = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(360.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // 🔹 HEADER
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp, horizontal = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Activity",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+
+                            IconButton(
+                                onClick = { scope.launch { drawerState.close() } },
+                                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Close")
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        // 🔹 CONTENT
+                        ResourceHandler(
+                            state = historyState,
+                            onLoading = {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    contentPadding = PaddingValues(vertical = 12.dp)
+                                ) {
+                                    items(5) {
+                                        HistoryShimmerItem()
+                                    }
+                                }
+                            }
+                        ) { historyItems ->
+                            if (historyItems.isEmpty()) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "No activity yet",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    contentPadding = PaddingValues(vertical = 12.dp)
+                                ) {
+                                    items(historyItems) { item ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            // 🔹 TIMELINE DOT + LINE
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(10.dp)
+                                                        .background(
+                                                            MaterialTheme.colorScheme.primary,
+                                                            shape = CircleShape
+                                                        )
+                                                )
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(2.dp)
+                                                        .height(60.dp)
+                                                        .background(Color.LightGray)
+                                                )
+                                            }
+
+                                            Spacer(Modifier.width(12.dp))
+
+                                            // 🔹 CONTENT
+                                            Column(
+                                                modifier = Modifier
+                                                    .padding(bottom = 16.dp)
+                                                    .weight(1f)
+                                            ) {
+                                                Text(
+                                                    item.fieldName ?: "Field",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+
+
+
+                                                Spacer(Modifier.height(4.dp))
+
+
+                                                // for description, we are storing contents in html format as we are using Rich Text Editor.
+                                                // So for that we have to parse it and show like normal text
+                                                if (item.fieldName.lowercase()
+                                                        .contains("description")
+                                                ) {
+                                                    Text(
+                                                        "${htmlToPlainText(item.oldValue ?: "")} ->  ${
+                                                            htmlToPlainText(
+                                                                item.newValue ?: ""
+                                                            )
+                                                        }",
+                                                        style = MaterialTheme.typography.bodyLarge
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        "${item.oldValue} ->  ${item.newValue}",
+                                                        style = MaterialTheme.typography.bodyLarge
+                                                    )
+                                                }
+
+
+
+                                                Spacer(Modifier.height(4.dp))
+
+                                                Text(
+                                                    "By ${UserManager.getUserName(item.changedBy)}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color.Gray
+                                                )
+
+                                                Text(
+                                                    "On ${Utils.formatDateTime(item.changedAt ?: "")}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color.Gray
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ) {
+            ResourceHandler(
+                state = fetchTicketState,
+                onLoading = {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            ) { ticket ->
+                ticket?.let {
+                    LaunchedEffect(ticket.id) {
+                        viewModel.loadComments(ticket.id.toString())
+                    }
+
+                    // YOUR EXISTING SCREEN CONTENT HERE
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        // Basic detail view for now
+                        Column(Modifier.fillMaxSize()) {
+                            CommonTopBar(
+                                title = "Ticket Details",
+                                showBack = true,
+                                onBack = onBack,
+                                onLogout = onLogout,
+                                onSearch = onSearchClick
+                            )
+                            HorizontalDivider()
+
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth().absolutePadding(
+                                    left = 11.dp,
+                                    right = 11.dp,
+                                    top = 24.dp,
+                                    bottom = 11.dp
+                                )
+                            ) {
+
+                                item {
+                                    Text(
+                                        text = "${ticket.ticketCode}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+
+                                        )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                }
+                                item {
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            ticket.title,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            modifier = Modifier.fillMaxWidth().weight(.9f)
+                                        )
+
+                                        Row(modifier = Modifier.fillMaxWidth().weight(.1f)) {
+                                            if (UserManager.isAdmin(AuthManager.userId) || UserManager.isSuperAdmin(
+                                                    AuthManager.userId
+                                                )
+                                            ) {
+                                                IconButton(
+                                                    onClick = { onClickEditTicket(ticket) },
+                                                    modifier = Modifier.weight(.5f)
+                                                        .pointerHoverIcon(PointerIcon.Hand)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Edit,
+                                                        contentDescription = "Edit",
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                                }
+                                            }
+
+
+                                            IconButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        viewModel.loadTicketHistory(ticket.id.toString())
+                                                        drawerState.open()
+                                                    }
+                                                },
+                                                modifier = Modifier.weight(.5f)
+                                                    .pointerHoverIcon(PointerIcon.Hand)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.History,
+                                                    contentDescription = "Profile",
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    val descState = rememberRichTextState()
+                                    LaunchedEffect(ticket.description) {
+                                        descState.setHtml(ticket.description)
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                                shape = RoundedCornerShape(11.dp)
+                                            ).padding(10.dp)
+                                    ) {
+                                        RichText(
+                                            state = descState,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+
+                                item {
+
+                                    Spacer(Modifier.height(20.dp))
+                                    Text(
+                                        "Details",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                                shape = RoundedCornerShape(11.dp)
+                                            ).padding(10.dp)
+                                    ) {
+
+                                        KeyValueRowItem(key = "Priority", value = ticket.priority ?: "")
+                                        KeyValueRowItem(
+                                            key = "Due Date",
+                                            value = Utils.formatDateTime(ticket.dueDate ?: "")
+                                        )
+                                        KeyValueRowItem(
+                                            key = "Assigned To",
+                                            value = UserManager.getUserName(
+                                                ticket.assignedTo
+                                            )
+                                        )
+                                    }
+
+
+                                }
+
+                                item {
+                                    Spacer(Modifier.height(20.dp))
+                                    Text(
+                                        "Add Comment",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+                                    val users = UserManager.getAllUsers()
+                                    JiraCommentBoxV2(ticket, users) { htmlComment ->
+                                        viewModel.addCommentToTicket(
+                                            ticket.id.toString(),
+                                            htmlComment,
+                                            parentId = ""
+                                        )
+                                    }
+                                }
+
+                                item {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Spacer(Modifier.height(20.dp))
+                                        Text(
+                                            "Comments",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(Modifier.height(10.dp))
+
+                                        ResourceHandler(
+                                            state = commentsState,
+                                            onLoading = {
+                                                Spacer(Modifier.height(20.dp))
+                                                Column {
+                                                    repeat(3) {
+                                                        CommentShimmerItem()
+                                                    }
+                                                }
+                                            }
+                                        ) { comments ->
+                                            val parentComments = comments.filter { it.parentId == null }
+                                            fun getReplies(parentId: String): List<Comment> {
+                                                return comments.filter { it.parentId == parentId }
+                                            }
+                                            parentComments.forEach { parentCommentItem ->
+                                                CommentItem(parentCommentItem, ticket = ticket)
+                                                val replies = getReplies(parentCommentItem.id ?: "")
+                                                if (replies.isNotEmpty()) {
+                                                    replies.forEach { reply ->
+                                                        ReplyItemForComment(reply)
+                                                    }
+                                                }
+
+
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+
+            }
+
+        }
+    }
+}
+
+@Composable
+fun CommentItem(comment: Comment, viewModel: TicketViewModel = viewModel { TicketViewModel() },ticket: Ticket) {
+    val replyingToCommentId = remember { mutableStateOf("") }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        // 🔹 Avatar
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = UserManager.getUserName(comment.createdBy)
+                    .take(1).uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            // 🔹 Name + Time
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    UserManager.getUserName(comment.createdBy),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "On ${
+                        Utils.formatDateTime(
+                            comment.createdAt ?: ""
+                        )
+                    }",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // 🔹 Content
+            val state = rememberRichTextState()
+            LaunchedEffect(comment.content) {
+                state.setHtml(comment.content ?: "")
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(10.dp)
+            ) {
+                RichText(
+                    state = state,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Text(
+                "Reply",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.clickable{
+                    replyingToCommentId.value = comment.id?:""
+                },
+                color = Color.Gray
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            HorizontalDivider(
+                color = Color.LightGray.copy(alpha = 0.4f)
+            )
+
+            if (replyingToCommentId.value == comment.id) {
+                JiraCommentBoxV2(ticket, UserManager.getAllUsers()) { htmlComment ->
+                    viewModel.addCommentToTicket(
+                        ticket.id.toString(),
+                        htmlComment,
+                        parentId = comment.id
+                    )
+                }
+            }
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+}
+
+fun Modifier.leftBorder(
+    width: Dp = 1.dp,
+    color: Color = Color.LightGray,
+    paddingStart: Dp = 8.dp
+): Modifier = this
+    .padding(start = paddingStart)
+    .drawBehind {
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(0f, 0f),
+            size = Size(width.toPx(), size.height),
+            cornerRadius = CornerRadius(4f, 4f)
+        )
+    }
+
+@Composable
+fun ReplyItemForComment(comment: Comment) {
+    Row(
+        modifier = Modifier.fillMaxWidth().absolutePadding(left = 40.dp).leftBorder(),
+        verticalAlignment = Alignment.Top
+    ) {
+
+        Spacer(modifier = Modifier.width(10.dp))
+        // 🔹 Avatar
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = UserManager.getUserName(comment.createdBy)
+                    .take(1).uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            // 🔹 Name + Time
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    UserManager.getUserName(comment.createdBy),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "On ${
+                        Utils.formatDateTime(
+                            comment.createdAt ?: ""
+                        )
+                    }",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // 🔹 Content
+            val state = rememberRichTextState()
+            LaunchedEffect(comment.content) {
+                state.setHtml(comment.content ?: "")
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(10.dp)
+            ) {
+                RichText(
+                    state = state,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            /* HorizontalDivider(
+                 color = Color.LightGray.copy(alpha = 0.4f)
+             )*/
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
 }
 
 @Composable

@@ -21,6 +21,7 @@ import com.atu.jira.repo.updateTicketWithHistory
 import com.atu.jira.repo.getComments
 import com.atu.jira.repo.addComment
 import com.atu.jira.repo.createTicketWithRPC
+import com.atu.jira.repo.getTicketByTicketCode
 import com.atu.jira.repo.getTicketHistory
 import com.atu.jira.users.UserManager
 import com.atu.jira.utils.ResourceState
@@ -55,6 +56,19 @@ class TicketViewModel : ViewModel() {
     private val _createTicketState = MutableStateFlow<ResourceState<Ticket>>(ResourceState.Idle)
     val createTicketState: StateFlow<ResourceState<Ticket>> = _createTicketState.asStateFlow()
 
+    val ticketByTicketCodeState = MutableStateFlow<ResourceState<Ticket?>>(ResourceState.Loading)
+
+
+    fun fetchTicketByTicketCode(ticketCode: String) {
+        viewModelScope.launch {
+            ticketByTicketCodeState.value = ResourceState.Loading
+            try {
+                ticketByTicketCodeState.value = ResourceState.Success(getTicketByTicketCode(ticketCode))
+            } catch (e: Exception) {
+                ticketByTicketCodeState.value = ResourceState.Error(e.message ?: "Error")
+            }
+        }
+    }
 
     fun loadTickets(projectId: String) {
         viewModelScope.launch {
@@ -225,13 +239,14 @@ class TicketViewModel : ViewModel() {
         }
     }
 
-    fun addCommentToTicket(ticketId: String, content: String) {
+    fun addCommentToTicket(ticketId: String, content: String,parentId: String) {
         viewModelScope.launch {
             try {
                 val newComment = Comment(
                     ticketId = ticketId,
                     content = content,
-                    createdBy = AuthManager.userId ?: "user_1"
+                    createdBy = AuthManager.userId ?: "user_1",
+                    parentId = parentId
                 )
                 addComment(newComment)
                 loadComments(ticketId)

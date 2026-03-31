@@ -72,7 +72,7 @@ kotlin {
             implementation("io.ktor:ktor-client-logging:3.0.3")
             implementation(libs.navigation.compose)
             implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

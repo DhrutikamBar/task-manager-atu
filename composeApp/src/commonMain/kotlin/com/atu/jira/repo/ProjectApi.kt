@@ -7,6 +7,7 @@ import com.atu.jira.repo.SupaBaseClient.client
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
+import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -16,6 +17,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
+
 
 private const val API_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmaGd3dGhvbXRncGFsa2hsZnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNTg1MzUsImV4cCI6MjA4OTgzNDUzNX0.FyXXXeTZbVC4Xm8ok8fR5gHhYrsA6PK9UUXBREw9YK4"
@@ -85,6 +87,20 @@ suspend fun createTicketWithRPC(request: CreateTicketRequest): Ticket {
         }.body()
 
     return response.first() // ✅ extract first item
+}
+
+
+suspend fun getTicketByTicketCode(ticketCode: String): Ticket? {
+    return SupaBaseClient.client.get("/rest/v1/tickets") {
+        parameter("ticket_code", "eq.$ticketCode")
+        parameter("select", "*")
+        headers {
+            append("apikey", API_KEY)
+            append("Authorization", "Bearer $API_KEY")
+            append("Content-Type", "application/json")
+            append("Prefer", "return=representation")
+        }
+    }.body<List<Ticket>>().firstOrNull()
 }
 
 

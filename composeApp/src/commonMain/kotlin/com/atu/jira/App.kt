@@ -53,7 +53,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                         onBack = { navController.popBackStack() },
                         onTicketClick = { ticket ->
                             navController.navigate(
-                                TicketDetailRoute(
+                                /*TicketDetailRoute(
                                     id = ticket.id!!,
                                     title = ticket.title,
                                     description = ticket.description,
@@ -66,6 +66,10 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                                     endTime = ticket.endTime,
                                     dueDate = ticket.dueDate,
                                     createdAt = ticket.createdAt,
+                                    ticketCode = ticket.ticketCode
+                                )*/
+
+                                TicketDetailRouteV2(
                                     ticketCode = ticket.ticketCode
                                 )
                             )
@@ -129,38 +133,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                         },
                         onTaskClick = { ticket ->
                             navController.navigate(
-                                TicketDetailRoute(
-                                    id = ticket.id!!,
-                                    title = ticket.title,
-                                    description = ticket.description,
-                                    status = ticket.status,
-                                    priority = ticket.priority,
-                                    assignedTo = ticket.assignedTo,
-                                    projectId = ticket.projectId,
-                                    createdBy = ticket.createdBy,
-                                    startTime = ticket.startTime,
-                                    endTime = ticket.endTime,
-                                    dueDate = ticket.dueDate,
-                                    createdAt = ticket.createdAt,
-                                    ticketCode =  ticket.ticketCode
-                                )
-                            )
-                        }
-                    )
-                }
-
-                composable<BoardRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<BoardRoute>()
-                    TicketBoardScreen(
-                        project = Project(
-                            id = route.projectId, 
-                            name = route.projectName, 
-                            projectCode = "", // We only have ID and Name from route, this is problematic
-                            isActive = true
-                        ),
-                        onTicketClick = { ticket ->
-                            navController.navigate(
-                                TicketDetailRoute(
+                                /*TicketDetailRoute(
                                     id = ticket.id!!,
                                     title = ticket.title,
                                     description = ticket.description,
@@ -174,13 +147,57 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                                     dueDate = ticket.dueDate,
                                     createdAt = ticket.createdAt,
                                     ticketCode = ticket.ticketCode
+                                )*/
+
+                                TicketDetailRouteV2(
+                                    ticketCode = ticket.ticketCode
+                                )
+                            )
+                        }
+                    )
+                }
+
+                composable<BoardRoute> { backStackEntry ->
+                    val route = backStackEntry.toRoute<BoardRoute>()
+                    TicketBoardScreen(
+                        project = Project(
+                            id = route.projectId,
+                            name = route.projectName,
+                            projectCode = "", // We only have ID and Name from route, this is problematic
+                            isActive = true
+                        ),
+                        onTicketClick = { ticket ->
+                            navController.navigate(
+                                /* TicketDetailRoute(
+                                     id = ticket.id!!,
+                                     title = ticket.title,
+                                     description = ticket.description,
+                                     status = ticket.status,
+                                     priority = ticket.priority,
+                                     assignedTo = ticket.assignedTo,
+                                     projectId = ticket.projectId,
+                                     createdBy = ticket.createdBy,
+                                     startTime = ticket.startTime,
+                                     endTime = ticket.endTime,
+                                     dueDate = ticket.dueDate,
+                                     createdAt = ticket.createdAt,
+                                     ticketCode = ticket.ticketCode
+                                 )*/
+
+                                TicketDetailRouteV2(
+                                    ticketCode = ticket.ticketCode
                                 )
                             )
                         },
                         onBack = { navController.popBackStack() },
                         onSearchClick = onSearchClick,
                         onAddTicket = {
-                            navController.navigate(CreateTicketRoute(route.projectId, route.projectName))
+                            navController.navigate(
+                                CreateTicketRoute(
+                                    route.projectId,
+                                    route.projectName
+                                )
+                            )
                         },
                         onLogout = {
                             AuthManager.logout()
@@ -195,7 +212,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                     val route = backStackEntry.toRoute<CreateTicketRoute>()
                     CreateTicketScreen(
                         project = Project(
-                            id = route.projectId, 
+                            id = route.projectId,
                             name = route.projectName,
                             projectCode = "",
                             isActive = true
@@ -228,24 +245,10 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                     )
                 }
 
-                composable<TicketDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<TicketDetailRoute>()
-                    TicketDetailScreenV4(
-                        ticket = Ticket(
-                            id = route.id,
-                            title = route.title,
-                            description = route.description,
-                            status = route.status, 
-                            priority = route.priority,
-                            projectId = route.projectId,
-                            assignedTo = route.assignedTo,
-                            createdBy = route.createdBy,
-                            startTime = route.startTime,
-                            endTime = route.endTime,
-                            dueDate = route.dueDate,
-                            createdAt = route.createdAt,
-                            ticketCode = route.ticketCode,
-                        ),
+                composable<TicketDetailRouteV2> { backStackEntry ->
+                    val route = backStackEntry.toRoute<TicketDetailRouteV2>()
+                    TicketDetailScreenV5(
+                        ticketCode = route.ticketCode ?: "",
                         onBack = { navController.popBackStack() },
                         onSearchClick = onSearchClick,
                         onLogout = {

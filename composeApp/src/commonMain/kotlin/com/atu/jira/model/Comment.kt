@@ -17,5 +17,9 @@ data class Comment(
     val createdBy: String? = null,
 
     @SerialName("created_at")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+
+    @SerialName("parent_id")
+    val parentId: String? = null // 👈 KEY FIELD
+
 )
