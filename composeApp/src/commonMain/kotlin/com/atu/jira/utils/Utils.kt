@@ -1,5 +1,6 @@
 package com.atu.jira.utils
 
+import androidx.compose.ui.platform.LocalViewConfiguration
 import kotlinx.datetime.*
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

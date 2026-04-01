@@ -185,6 +185,14 @@ fun LoadingUI() {
     }
 }
 
+
+
+enum class DeviceType {
+    MOBILE,
+    TABLET,
+    DESKTOP
+}
+
 @Composable
 fun ErrorUI(message: String) {
     Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
