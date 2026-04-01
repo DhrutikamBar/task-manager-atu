@@ -127,6 +127,14 @@ enum class Screen {
     LOGIN, SIGNUP, HOME, PROJECTS, BOARD, TICKET_DETAIL, CREATE_TICKET, CREATE_PROJECT, SEARCH
 }
 
+enum class TicketType(val label: String) {
+    BUG("Bug"),
+    FEATURE("Feature"),
+    IMPROVEMENT("Improvement"),
+    TASK("Task")
+}
+
+
 // Navigation Routes
 @Serializable @SerialName("login") object LoginRoute
 @Serializable @SerialName("signup") object SignupRoute

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.window.core.layout.WindowWidthSizeClass
 import com.atu.jira.auth.AuthManager
 import com.atu.jira.theme.LocalThemeController
 import com.atu.jira.utils.ResourceState
@@ -187,10 +189,22 @@ fun LoadingUI() {
 
 
 
-enum class DeviceType {
-    MOBILE,
-    TABLET,
-    DESKTOP
+enum class DevicePosture {
+    Mobile,   // Compact width (Phones, small split-screens)
+    Tablet,   // Medium width (Foldables, Tablets)
+    Desktop   // Expanded width (Laptops, Large Monitors)
+}
+
+@Composable
+fun calculateDevicePosture(): DevicePosture {
+    val sizeClass = currentWindowAdaptiveInfo().windowSizeClass
+
+    return when (sizeClass.windowWidthSizeClass) {
+        WindowWidthSizeClass.COMPACT -> DevicePosture.Mobile
+        WindowWidthSizeClass.MEDIUM -> DevicePosture.Tablet
+        WindowWidthSizeClass.EXPANDED -> DevicePosture.Desktop
+        else -> DevicePosture.Mobile
+    }
 }
 
 @Composable

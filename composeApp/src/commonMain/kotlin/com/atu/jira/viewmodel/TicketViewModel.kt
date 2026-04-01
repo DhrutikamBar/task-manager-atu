@@ -248,6 +248,16 @@ class TicketViewModel : ViewModel() {
         }
     }
 
+    fun updateTicketStatus(ticket: Ticket, newStatus: String) {
+        viewModelScope.launch {
+            try {
+                updateTicketStatus(ticket.id!!, newStatus)
+            } catch (e: Exception) {
+                // Handle background move error
+            }
+        }
+    }
+
     fun loadComments(ticketId: String) {
         viewModelScope.launch {
             _commentsState.value = ResourceState.Loading

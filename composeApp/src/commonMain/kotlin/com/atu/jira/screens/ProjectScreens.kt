@@ -49,13 +49,6 @@ fun ProjectListScreen(
         viewModel.loadUsers()
     }
 
-   /* LaunchedEffect(Unit){
-        sendEmailEmailJS(toEmail = "dhrutikam18@gmail.com", ticketCode = "TEST-1234", message = "Kindly Check it")
-    }*/
-
-    /*LaunchedEffect(Unit){
-        getUserDetails(AuthManager.userId!!)
-    }*/
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (showTopBar) {

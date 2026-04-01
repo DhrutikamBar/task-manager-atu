@@ -73,6 +73,8 @@ kotlin {
             implementation(libs.navigation.compose)
             implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            // commonMain
+            implementation("org.jetbrains.compose.material3.adaptive:adaptive:1.3.0-alpha02")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -1,5 +1,6 @@
 package com.atu.jira.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,11 +15,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.atu.jira.components.DevicePosture
 import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.MainButton
+import com.atu.jira.components.calculateDevicePosture
 import com.atu.jira.utils.ResourceState
 import com.atu.jira.viewmodel.AuthViewModel
+import jiraatu.composeapp.generated.resources.Res
+import jiraatu.composeapp.generated.resources.ic_atu
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun LoginScreen(
@@ -30,60 +36,149 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
 
+    var isTabletOrDesktop = true
+    val posture = calculateDevicePosture()
+
+    when (posture) {
+        DevicePosture.Desktop -> {
+            isTabletOrDesktop = true
+        }
+
+        DevicePosture.Tablet -> {
+            isTabletOrDesktop = true
+        }
+
+        DevicePosture.Mobile -> {
+            isTabletOrDesktop = false
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("Login", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(16.dp))
+        if (isTabletOrDesktop) {
+            Row(modifier = Modifier.fillMaxWidth()) {
 
-            JiraTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = "Email",
-                modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is ResourceState.Loading,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-            )
+                Image(
+                    painter = painterResource(Res.drawable.ic_atu),
+                    contentDescription = "Logo",
+                    modifier = Modifier.weight(.5f)
+                )
 
-            Spacer(Modifier.height(12.dp))
 
-            JiraTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = "Password",
-                modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is ResourceState.Loading,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp).weight(.5f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("Login", style = MaterialTheme.typography.headlineMedium)
+                    Spacer(Modifier.height(16.dp))
 
-            Spacer(Modifier.height(24.dp))
+                    JiraTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = "Email",
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = authState !is ResourceState.Loading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
 
-            JiraButton(
-                text = if (authState is ResourceState.Loading) "Logging in..." else "Login",
-                enabled = authState !is ResourceState.Loading,
-                onClick = {
-                    viewModel.loginUser(email, password, onLoginSuccess)
+                    Spacer(Modifier.height(12.dp))
+
+                    JiraTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = "Password",
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = authState !is ResourceState.Loading,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    JiraButton(
+                        text = if (authState is ResourceState.Loading) "Logging in..." else "Login",
+                        enabled = authState !is ResourceState.Loading,
+                        onClick = {
+                            viewModel.loginUser(email, password, onLoginSuccess)
+                        }
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Don't have an account? Signup",
+                        modifier = Modifier
+                            .clickable { onSignupClick() }
+                            .pointerHoverIcon(PointerIcon.Hand),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    if (authState is ResourceState.Error) {
+                        Spacer(Modifier.height(16.dp))
+                        Text((authState as ResourceState.Error).message, color = Color.Red)
+                    }
                 }
-            )
+            }
 
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Don't have an account? Signup",
-                modifier = Modifier
-                    .clickable { onSignupClick() }
-                    .pointerHoverIcon(PointerIcon.Hand),
-                color = MaterialTheme.colorScheme.primary
-            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("Login", style = MaterialTheme.typography.headlineMedium)
 
-            if (authState is ResourceState.Error) {
+                Image(
+                    painter = painterResource(Res.drawable.ic_atu),
+                    contentDescription = "Logo",
+                )
                 Spacer(Modifier.height(16.dp))
-                Text((authState as ResourceState.Error).message, color = Color.Red)
+
+                JiraTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = "Email",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authState !is ResourceState.Loading,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                JiraTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Password",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authState !is ResourceState.Loading,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                JiraButton(
+                    text = if (authState is ResourceState.Loading) "Logging in..." else "Login",
+                    enabled = authState !is ResourceState.Loading,
+                    onClick = {
+                        viewModel.loginUser(email, password, onLoginSuccess)
+                    }
+                )
+
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Don't have an account? Signup",
+                    modifier = Modifier
+                        .clickable { onSignupClick() }
+                        .pointerHoverIcon(PointerIcon.Hand),
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                if (authState is ResourceState.Error) {
+                    Spacer(Modifier.height(16.dp))
+                    Text((authState as ResourceState.Error).message, color = Color.Red)
+                }
             }
         }
-        
+
+
         if (authState is ResourceState.Loading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
         }
