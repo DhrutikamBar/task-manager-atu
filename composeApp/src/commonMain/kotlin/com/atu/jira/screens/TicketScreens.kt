@@ -599,151 +599,6 @@ fun JiraRichTextEditor(
     }
 }
 
-@Composable
-fun CreateTicketScreen(
-    project: Project,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
-    onCreate: (Ticket) -> Unit,
-    onBack: () -> Unit,
-    onSearchClick: () -> Unit,
-    onLogout: () -> Unit
-) {
-    var title by remember { mutableStateOf("") }
-    val descriptionState = rememberRichTextState()
-    var selectedUser by remember { mutableStateOf<User?>(null) }
-    var status by remember { mutableStateOf(Status.TODO.value) }
-    var priority by remember { mutableStateOf("medium") }
-    var startTime by remember { mutableStateOf("") }
-    var endTime by remember { mutableStateOf("") }
-    var dueDate by remember { mutableStateOf("") }
-
-    val usersState by viewModel.usersState.collectAsState()
-    val actionState by viewModel.actionState.collectAsState()
-    val scrollState = rememberScrollState()
-
-    LaunchedEffect(Unit) {
-        viewModel.loadUsers()
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        CommonTopBar(
-            title = "New Ticket",
-            showBack = true,
-            onBack = onBack,
-            onLogout = onLogout,
-            onSearch = onSearchClick
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-        ) {
-            JiraTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = "Title",
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                "Description",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            JiraRichTextEditor(
-                state = descriptionState,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            SimpleDropdown(
-                label = "Status",
-                options = listOf(Status.TODO.value, Status.IN_PROGRESS.value, Status.DONE.value),
-                selectedOption = status,
-                onOptionSelected = { status = it }
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            SimpleDropdown(
-                label = "Priority",
-                options = listOf("low", "medium", "high", "critical"),
-                selectedOption = priority,
-                onOptionSelected = { priority = it }
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            ResourceHandler(
-                state = usersState,
-                onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            ) { users ->
-                UserDropdown(
-                    users = users,
-                    selectedUser = selectedUser,
-                    onUserSelected = { selectedUser = it }
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            DatePickerField(
-                label = "Start Time (YYYY-MM-DD)",
-                selectedDate = startTime,
-                onDateSelected = { startTime = it }
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            DatePickerField(
-                label = "End Time (YYYY-MM-DD)",
-                selectedDate = endTime,
-                onDateSelected = { endTime = it }
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            DatePickerField(
-                label = "Due Date (YYYY-MM-DD)",
-                selectedDate = dueDate,
-                onDateSelected = { dueDate = it }
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            MainButton(
-                onClick = {
-                    viewModel.createTicketWithRPCFunction(
-                        Ticket(
-                            title = title,
-                            description = descriptionState.toHtml(),
-                            status = status,
-                            priority = priority,
-                            projectId = project.id,
-                            assignedTo = selectedUser?.id,
-                            createdBy = AuthManager.userId,
-                            startTime = startTime.takeIf { it.isNotBlank() },
-                            endTime = endTime.takeIf { it.isNotBlank() },
-                            dueDate = dueDate.takeIf { it.isNotBlank() }
-                        ),
-                        onComplete = onCreate
-                    )
-                },
-                enabled = title.isNotBlank() && actionState !is ResourceState.Loading,
-                text = if (actionState is ResourceState.Loading) "Creating..." else "Create Ticket"
-            )
-
-            Spacer(Modifier.height(16.dp))
-        }
-    }
-}
 
 @Composable
 fun StatusColumn(
@@ -2771,11 +2626,12 @@ fun ActionIcon(
         )
     }
 }
+
 @Composable
 fun TicketTypeDisplay(type: String?) {
 
-    val ticketType = remember(type) {
-        TicketType.entries.find { it.name == type } ?: TicketType.TASK
+    val ticketType = remember(type?.lowercase()) {
+        TicketType.entries.find { it.name.equals(type, ignoreCase = true) } ?: TicketType.TASK
     }
 
     Surface(
@@ -2811,38 +2667,6 @@ fun TicketTypeDisplay(type: String?) {
 }
 
 
-@Composable
-fun TicketTypeChips(
-    selectedType: String,
-    onTypeSelected: (String) -> Unit
-) {
-    val types = TicketType.entries.toTypedArray()
-
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        types.forEach { type ->
-            val isSelected = type.name == selectedType
-
-            FilterChip(
-                selected = isSelected,
-                onClick = { onTypeSelected(type.name) },
-                label = { Text(type.label) },
-                leadingIcon = {
-                    Icon(
-                        getTypeIcon(type),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = getTypeColor(type).copy(alpha = 0.2f),
-                    selectedLabelColor = getTypeColor(type),
-                    selectedLeadingIconColor = getTypeColor(type)
-                )
-            )
-        }
-    }
-}
-
 fun getTypeIcon(type: TicketType): ImageVector {
     return when (type) {
         TicketType.BUG -> Icons.Default.BugReport
@@ -2871,12 +2695,6 @@ fun TicketDetailsListComponent(
 ) {
 
 
-    val ticketTypeList = listOf(
-        "Bug",
-        "Feature",
-        "Improvement",
-        "Task"
-    )
 
     JiraCard() {
 
@@ -2935,11 +2753,10 @@ fun TicketDetailsListComponent(
 
             // 🔷 DETAILS CONTENT
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-
-               // TicketTypeChips(selectedType = TicketType.BUG.name, onTypeSelected = {})
-                TicketTypeDisplay(TicketType.BUG.name)
+                // TicketTypeChips(selectedType = TicketType.BUG.name, onTypeSelected = {})
+                TicketTypeDisplay(ticket.ticketType)
 
                 DetailItem(
                     icon = Icons.Default.Flag,

@@ -1,5 +1,6 @@
 package com.atu.jira.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -30,7 +31,7 @@ fun JiraTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        modifier = modifier.pointerHoverIcon(PointerIcon.Text),
+        modifier = modifier.pointerHoverIcon(PointerIcon.Text).fillMaxWidth(),
         minLines = minLines,
         maxLines = maxLines,
         readOnly = readOnly,

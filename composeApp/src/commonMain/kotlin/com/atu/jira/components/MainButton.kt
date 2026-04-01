@@ -7,20 +7,27 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -52,7 +59,7 @@ fun MainButton(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .height(45.dp)
     ) {
 
         // ---------- Bottom shadow ----------
@@ -163,5 +170,81 @@ fun JiraButton(
             fontWeight = FontWeight.Medium,
             color = contentColor
         )
+    }
+}
+
+@Composable
+fun JiraButtonWithLoader(
+    text: String,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val offsetY = remember { Animatable(0f) }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val isButtonEnabled = enabled && !isLoading
+
+    val backgroundColor = when {
+        !isButtonEnabled -> Color(0xFFE0E0E0)
+        isPressed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val contentColor = when {
+        !isButtonEnabled -> Color(0xFF9E9E9E)
+        else -> Color.White
+    }
+
+    Button(
+        onClick = onClick,
+        enabled = isButtonEnabled,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(6.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            disabledContainerColor = backgroundColor
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .offset { IntOffset(0, offsetY.value.roundToInt()) }
+            .pointerHoverIcon(
+                if (isButtonEnabled) PointerIcon.Hand else PointerIcon.Default
+            )
+    ) {
+
+        if (isLoading) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    color = contentColor,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Please wait...",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = contentColor
+                )
+            }
+        } else {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = contentColor
+            )
+        }
     }
 }

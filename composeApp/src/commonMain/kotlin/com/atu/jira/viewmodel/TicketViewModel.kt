@@ -219,7 +219,7 @@ class TicketViewModel : ViewModel() {
                     description = description,
                     status = newStatus,
                     projectId = projectId,
-                    assignedTo = selectedUser?.name,
+                    assignedTo = selectedUser?.id,
                     createdBy = oldTicket.createdBy ?: AuthManager.userId,
                     priority = priority,
                     startTime = startTime,

@@ -77,7 +77,8 @@ data class Ticket(
     @SerialName("start_time") val startTime: String? = null,
     @SerialName("end_time") val endTime: String? = null,
     @SerialName("due_date") val dueDate: String? = null,
-    @SerialName("ticket_code") val ticketCode: String? = ""
+    @SerialName("ticket_code") val ticketCode: String? = "",
+    @SerialName("ticket_type") val ticketType: String? = TicketType.TASK.name,
 )
 
 @Serializable
@@ -136,20 +137,38 @@ enum class TicketType(val label: String) {
 
 
 // Navigation Routes
-@Serializable @SerialName("login") object LoginRoute
-@Serializable @SerialName("signup") object SignupRoute
-@Serializable @SerialName("home") object HomeRoute
-@Serializable @SerialName("create_project") object CreateProjectRoute
-@Serializable @SerialName("search") object SearchRoute
-@Serializable @SerialName("board") data class BoardRoute(val projectId: String, val projectName: String)
-@Serializable @SerialName("create_ticket") data class CreateTicketRoute(val projectId: String, val projectName: String)
+@Serializable
+@SerialName("login")
+object LoginRoute
+@Serializable
+@SerialName("signup")
+object SignupRoute
+@Serializable
+@SerialName("home")
+object HomeRoute
+@Serializable
+@SerialName("create_project")
+object CreateProjectRoute
+@Serializable
+@SerialName("search")
+object SearchRoute
+@Serializable
+@SerialName("board")
+data class BoardRoute(val projectId: String, val projectName: String)
+@Serializable
+@SerialName("create_ticket")
+data class CreateTicketRoute(val projectId: String, val projectName: String)
 
 
-@Serializable @SerialName("ticket") data class TicketDetailRouteV2(
+@Serializable
+@SerialName("ticket")
+data class TicketDetailRouteV2(
     val ticketCode: String? = null
 )
 
-@Serializable @SerialName("edit_ticket") data class EditTicketRoute(
+@Serializable
+@SerialName("edit_ticket")
+data class EditTicketRoute(
     val id: String,
     val title: String,
     val description: String,
