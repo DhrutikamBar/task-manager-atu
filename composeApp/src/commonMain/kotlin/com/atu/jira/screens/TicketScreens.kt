@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.BugReport
@@ -62,6 +61,8 @@ import com.atu.jira.components.HistoryShimmerItem
 import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraCard
 import com.atu.jira.components.JiraTextField
+import com.atu.jira.LocalTicketEditMode
+import com.atu.jira.components.BaseEditableField
 import com.atu.jira.components.MainButton
 import com.atu.jira.components.ResourceHandler
 import com.atu.jira.components.TicketShimmerItem
@@ -2226,7 +2227,10 @@ fun TicketDetailScreenV7(
         viewModel.loadUsers()
     }
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+    CompositionLocalProvider(
+        LocalLayoutDirection provides LayoutDirection.Rtl,
+        LocalTicketEditMode provides viewModel.isEditMode
+    ) {
         ModalNavigationDrawer(
             drawerState = drawerState,
             gesturesEnabled = false,
@@ -2243,31 +2247,37 @@ fun TicketDetailScreenV7(
                 }
             ) { ticket ->
 
-                // YOUR EXISTING SCREEN CONTENT HERE
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    // Basic detail view for now
-                    Column(Modifier.fillMaxSize()) {
-                        CommonTopBar(
-                            title = "Ticket Details",
-                            showBack = true,
-                            onBack = onBack,
-                            onLogout = onLogout,
-                            onSearch = onSearchClick
-                        )
-                        HorizontalDivider()
+                ticket?.let {
+                    // YOUR EXISTING SCREEN CONTENT HERE
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        // Basic detail view for now
+                        Column(Modifier.fillMaxSize()) {
+                            CommonTopBar(
+                                title = "Ticket Details",
+                                showBack = true,
+                                onBack = onBack,
+                                onLogout = onLogout,
+                                onSearch = onSearchClick
+                            )
+                            HorizontalDivider()
 
-                        Spacer(modifier = Modifier.height(11.dp))
+                            Spacer(modifier = Modifier.height(11.dp))
 
-                        TicketDetailsUI(
-                            ticket,
-                            onTicketEditClick = onClickEditTicket,
-                            scope = scope,
-                            drawerState = drawerState
-                        )
+                            TicketDetailsUI(
+                                ticket,
+                                onTicketEditClick = {
+                                    viewModel.initEditableTicket(ticket)
+                                    viewModel.enableEdit()
+                                },
+                                scope = scope,
+                                drawerState = drawerState
+                            )
 
 
+                        }
                     }
                 }
+
 
 
             }
@@ -2307,6 +2317,10 @@ fun TicketDetailsUI(
             viewModel.loadComments(ticket.id.toString())
         }
 
+        LaunchedEffect(ticket.id) {
+            viewModel.initEditableTicket(ticket)
+        }
+
         if (isTabletOrDesktop) {
             Row(modifier = Modifier.fillMaxWidth().absolutePadding(left = 11.dp, right = 11.dp)) {
                 LazyColumn(
@@ -2329,11 +2343,29 @@ fun TicketDetailsUI(
                                 )
 
                                 Spacer(Modifier.height(6.dp))
+                                BaseEditableField(
+                                    viewMode = {
+                                        Text(
+                                            text = ticket.title,
+                                            style = MaterialTheme.typography.headlineSmall
+                                        )
+                                    },
+                                    editMode = {
+                                        var editableTicket = viewModel.editableTicket
+                                        JiraTextField(
+                                            value = editableTicket?.title?:"",
+                                            onValueChange = {
+                                                editableTicket = editableTicket?.copy(title = it)
+                                            },
+                                            label = "Title"
+                                        )
+                                    }
+                                )
 
-                                Text(
+                              /*  Text(
                                     text = ticket.title,
                                     style = MaterialTheme.typography.headlineSmall
-                                )
+                                )*/
 
                                 Spacer(Modifier.height(12.dp))
 
@@ -2694,7 +2726,7 @@ fun TicketDetailsListComponent(
     viewModel: TicketViewModel = viewModel { TicketViewModel() }
 ) {
 
-
+    val isEditMode = viewModel.isEditMode
 
     JiraCard() {
 
@@ -2728,11 +2760,38 @@ fun TicketDetailsListComponent(
                     if (UserManager.isAdmin(AuthManager.userId) ||
                         UserManager.isSuperAdmin(AuthManager.userId)
                     ) {
+
                         ActionIcon(
-                            icon = Icons.Default.Edit,
-                            bgColor = MaterialTheme.colorScheme.primary,
-                            onClick = { onClickEditTicket(ticket) }
+                            icon = if (isEditMode) Icons.Default.Check else Icons.Default.Edit,
+                            bgColor = if (isEditMode)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.primary,
+                            onClick = {
+
+                                if (!isEditMode) {
+                                    // 👉 ENTER EDIT MODE
+                                    viewModel.initEditableTicket(ticket)
+                                    viewModel.enableEdit()
+
+                                } else {
+                                    // 👉 SAVE / SUBMIT
+                                    val updated = viewModel.editableTicket ?: return@ActionIcon
+
+                                  /*  val changes = getChangedFields(ticket, updated)
+
+                                    if (changes.isNotEmpty()) {
+                                        viewModel.updateTicketWithHistory(
+                                            updatedTicket = updated,
+                                            changes = changes
+                                        )
+                                    }*/
+
+                                    viewModel.disableEdit()
+                                }
+                            }
                         )
+
                     }
 
                     ActionIcon(

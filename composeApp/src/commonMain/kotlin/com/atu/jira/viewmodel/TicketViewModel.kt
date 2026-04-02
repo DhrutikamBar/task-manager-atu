@@ -1,5 +1,8 @@
 package com.atu.jira.viewmodel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.atu.jira.model.Project
@@ -64,6 +67,41 @@ class TicketViewModel : ViewModel() {
         MutableStateFlow<ResourceState<List<Ticket>>>(ResourceState.Idle)
     val allTicketsByUserIdState: StateFlow<ResourceState<List<Ticket>>> =
         _allTicketsByUserIdState.asStateFlow()
+
+    // for storing if edit mode is enabled or not
+
+    var isEditMode by mutableStateOf(false)
+        private set
+
+    fun enableEdit() {
+        isEditMode = true
+    }
+
+    fun disableEdit() {
+        isEditMode = false
+    }
+
+    fun toggleEdit() {
+        isEditMode = !isEditMode
+    }
+
+
+    // for storing editable ticket details and using it across components
+
+    var editableTicket by mutableStateOf<Ticket?>(null)
+        private set
+
+    fun initEditableTicket(ticket: Ticket) {
+        editableTicket = ticket.copy()
+    }
+
+    fun updateEditableTicket(updated: Ticket) {
+        editableTicket = updated
+    }
+
+    fun resetEditableTicket(original: Ticket) {
+        editableTicket = original.copy()
+    }
 
 
     fun fetchTicketByTicketCode(ticketCode: String) {
