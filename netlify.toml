@@ -1,3 +1,15 @@
 [build]
-command = "./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon"
+# 1. Download Portable Java 17
+# 2. Extract it to a temporary folder
+# 3. Set JAVA_HOME and PATH for this command only
+# 4. Run your Gradle task
+command = """
+    curl -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.10%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.10_7.tar.gz -o jdk17.tar.gz &&
+    mkdir -p ./jdk17 &&
+    tar -xzf jdk17.tar.gz -C ./jdk17 --strip-components=1 &&
+    export JAVA_HOME=$(pwd)/jdk17 &&
+    export PATH=$JAVA_HOME/bin:$PATH &&
+    java -version &&
+    ./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon
+  """
 publish = "composeApp/build/dist/wasmJs/productionExecutable"
