@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -51,19 +52,19 @@ fun Modifier.shimmerEffect(): Modifier = composed {
             repeatMode = RepeatMode.Restart
         )
     )
-    
+
     val shimmerColors = listOf(
         Color.LightGray.copy(alpha = 0.4f),
         Color.LightGray.copy(alpha = 0.1f),
         Color.LightGray.copy(alpha = 0.4f),
     )
-    
+
     val brush = Brush.linearGradient(
         colors = shimmerColors,
         start = Offset.Zero,
         end = Offset(x = translateAnimation, y = translateAnimation)
     )
-    
+
     this.background(brush)
 }
 
@@ -88,9 +89,15 @@ fun ProjectShimmerItem() {
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Box(modifier = Modifier.height(18.dp).fillMaxWidth(0.6f).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+                Box(
+                    modifier = Modifier.height(18.dp).fillMaxWidth(0.6f)
+                        .clip(RoundedCornerShape(4.dp)).shimmerEffect()
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Box(modifier = Modifier.height(14.dp).fillMaxWidth(0.4f).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+                Box(
+                    modifier = Modifier.height(14.dp).fillMaxWidth(0.4f)
+                        .clip(RoundedCornerShape(4.dp)).shimmerEffect()
+                )
             }
         }
     }
@@ -106,12 +113,24 @@ fun TicketShimmerItem() {
         Row(Modifier.height(IntrinsicSize.Min)) {
             Box(modifier = Modifier.width(4.dp).fillMaxHeight().shimmerEffect())
             Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
-                Box(modifier = Modifier.height(16.dp).fillMaxWidth(0.8f).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+                Box(
+                    modifier = Modifier.height(16.dp).fillMaxWidth(0.8f)
+                        .clip(RoundedCornerShape(4.dp)).shimmerEffect()
+                )
                 Spacer(Modifier.height(12.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Box(modifier = Modifier.height(12.dp).width(60.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
-                    Box(modifier = Modifier.height(12.dp).width(50.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box(
+                        modifier = Modifier.height(12.dp).width(60.dp)
+                            .clip(RoundedCornerShape(4.dp)).shimmerEffect()
+                    )
+                    Box(
+                        modifier = Modifier.height(12.dp).width(50.dp)
+                            .clip(RoundedCornerShape(4.dp)).shimmerEffect()
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -119,7 +138,10 @@ fun TicketShimmerItem() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(20.dp).clip(CircleShape).shimmerEffect())
                     Spacer(Modifier.width(6.dp))
-                    Box(modifier = Modifier.height(12.dp).width(80.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+                    Box(
+                        modifier = Modifier.height(12.dp).width(80.dp)
+                            .clip(RoundedCornerShape(4.dp)).shimmerEffect()
+                    )
                 }
             }
         }
@@ -133,10 +155,16 @@ fun CommentShimmerItem() {
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row {
-                Box(modifier = Modifier.height(14.dp).width(100.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+                Box(
+                    modifier = Modifier.height(14.dp).width(100.dp).clip(RoundedCornerShape(4.dp))
+                        .shimmerEffect()
+                )
             }
             Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.height(60.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).shimmerEffect())
+            Box(
+                modifier = Modifier.height(60.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                    .shimmerEffect()
+            )
             Spacer(Modifier.height(12.dp))
             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f))
         }
@@ -152,13 +180,25 @@ fun HistoryShimmerItem() {
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f).padding(bottom = 16.dp)) {
-            Box(modifier = Modifier.height(12.dp).width(60.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+            Box(
+                modifier = Modifier.height(12.dp).width(60.dp).clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
             Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.height(14.dp).fillMaxWidth(0.9f).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+            Box(
+                modifier = Modifier.height(14.dp).fillMaxWidth(0.9f).clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
             Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.height(10.dp).width(80.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+            Box(
+                modifier = Modifier.height(10.dp).width(80.dp).clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
             Spacer(Modifier.height(4.dp))
-            Box(modifier = Modifier.height(10.dp).width(100.dp).clip(RoundedCornerShape(4.dp)).shimmerEffect())
+            Box(
+                modifier = Modifier.height(10.dp).width(100.dp).clip(RoundedCornerShape(4.dp))
+                    .shimmerEffect()
+            )
         }
     }
 }
@@ -187,6 +227,47 @@ fun LoadingUI() {
     }
 }
 
+@Composable
+fun CenterWrapper(
+    modifier: Modifier = Modifier,
+    maxWidth: Dp = 500.dp,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = contentAlignment
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = maxWidth)
+                .padding(16.dp)
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun CenteredContainer(
+    maxWidth: Dp = 420.dp,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = maxWidth)
+                .padding(16.dp)
+        ) {
+            content()
+        }
+    }
+}
 
 
 enum class DevicePosture {
@@ -308,7 +389,7 @@ fun CommonTopBar(
                         modifier = Modifier.size(24.dp)
                     )
                 }
-                
+
                 DropdownMenu(
                     expanded = showProfileMenu,
                     onDismissRequest = { showProfileMenu = false }

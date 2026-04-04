@@ -106,9 +106,11 @@ data class TicketResponse(
 
 @Serializable
 enum class Status(val value: String) {
-    TODO("todo"),
-    IN_PROGRESS("in_progress"),
-    DONE("done")
+    TODO("TODO"),
+    ON_QA("ON_QA"),
+    ON_HOLD("ON_HOLD"),
+    IN_PROGRESS("IN_PROGRESS"),
+    CLOSED("CLOSED")
 }
 
 @Serializable

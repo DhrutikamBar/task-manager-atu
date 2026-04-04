@@ -22,6 +22,8 @@ import com.atu.jira.model.Ticket
 import com.atu.jira.model.User
 import com.atu.jira.repo.searchTickets
 import com.atu.jira.repo.searchUsers
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import com.mohamedrejeb.richeditor.ui.material3.RichText
 import kotlinx.coroutines.delay
 
 @Composable
@@ -52,7 +54,7 @@ fun SearchScreen(
             JiraTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = "Search tickets, people...",
+                label = "Search tickets",
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
@@ -154,6 +156,11 @@ fun SearchResultsList(
 
 @Composable
 fun TicketSearchItem(ticket: Ticket, onClick: (Ticket) -> Unit) {
+    /*val descState = rememberRichTextState()
+    LaunchedEffect(ticket.description) {
+        descState.setHtml(ticket.description)
+    }*/
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -166,12 +173,17 @@ fun TicketSearchItem(ticket: Ticket, onClick: (Ticket) -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
-        Text(
-            text = ticket.description,
+       Text(
+            text = htmlToPlainText(ticket.description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             maxLines = 1
         )
+
+        /*RichText(
+            state = descState,
+            style = MaterialTheme.typography.bodyMedium
+        )*/
     }
 }
 

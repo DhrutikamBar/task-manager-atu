@@ -498,6 +498,9 @@ fun TicketMainForm(
     var endTime by remember { mutableStateOf("") }
     var dueDate by remember { mutableStateOf("") }
 
+    var selectedTicketType by remember { mutableStateOf("") }
+
+
     val usersState by viewModel.usersState.collectAsState()
     val actionState by viewModel.actionState.collectAsState()
 
@@ -527,6 +530,10 @@ fun TicketMainForm(
 
     Spacer(Modifier.height(16.dp))
 
+    TicketTypeChips(selectedType = selectedTicketType, onTypeSelected = {
+        selectedTicketType = it
+    })
+    Spacer(Modifier.height(16.dp))
     // 🔹 Status
     SimpleDropdown(
         label = "Status",
@@ -583,7 +590,7 @@ fun TicketMainForm(
                     createdBy = AuthManager.userId,
                     startTime = startTime.takeIf { it.isNotBlank() },
                     endTime = endTime.takeIf { it.isNotBlank() },
-                    dueDate = dueDate.takeIf { it.isNotBlank() }
+                    dueDate = dueDate.takeIf { it.isNotBlank() }, ticketType = selectedTicketType
                 ),
                 onComplete = onCreate
             )

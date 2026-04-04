@@ -7,14 +7,27 @@ import com.atu.jira.users.UserManager
 
 object NotificationHelper {
 
-    suspend fun notifyAssignedUser(userId: String, ticket: Ticket) {
+    suspend fun notifyAssignedUser(userId: String, ticket: Ticket,ticketCode: String?="") {
         if (userId == AuthManager.userId) return
 
         val user = UserManager.getUser(userId) ?: return
 
         sendEmailEmailJS(
             toEmail = user.email,
-            ticketCode = ticket.ticketCode ?: "",
+            ticketCode = ticket.ticketCode ?: ticketCode?:"",
+            message = "You have been assigned a ticket",
+            actionType = "assign"
+        )
+    }
+
+    suspend fun notifyUpdatedAssignedUser(userId: String, ticket: Ticket,ticketCode: String?="") {
+        if (userId == AuthManager.userId) return
+
+        val user = UserManager.getUser(userId) ?: return
+        println("old_ticket_log 2-> $ticketCode")
+        sendEmailEmailJS(
+            toEmail = user.email,
+            ticketCode = ticketCode?:"",
             message = "You have been assigned a ticket",
             actionType = "assign"
         )

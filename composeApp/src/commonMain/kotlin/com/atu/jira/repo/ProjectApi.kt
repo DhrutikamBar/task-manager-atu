@@ -145,6 +145,12 @@ suspend fun sendEmailEmailJS(
 }
 
 suspend fun updateTicketStatus(ticketId: String, status: String) {
+
+    val timestamp = Clock.System.now().toString()
+
+    // ✅ 1. Update ONLY status
+
+
     SupaBaseClient.client.patch("/rest/v1/tickets?id=eq.$ticketId") {
         contentType(ContentType.Application.Json)
         headers {
@@ -154,6 +160,27 @@ suspend fun updateTicketStatus(ticketId: String, status: String) {
         }
         setBody(mapOf("status" to status))
     }
+
+    // ✅ 2. Insert ONLY status history
+    SupaBaseClient.client.post("/rest/v1/ticket_history") {
+        headers {
+            append("apikey", API_KEY)
+            append("Authorization", "Bearer $API_KEY")
+            append("Content-Type", "application/json")
+            append("Prefer", "return=minimal")
+        }
+        setBody(
+            mapOf(
+                "ticket_id" to ticketId,
+                "field_name" to "status",
+                "old_value" to "",
+                "new_value" to status,
+                "changed_by" to (AuthManager.userId ?: ""),
+                "changed_at" to timestamp
+            )
+        )
+    }
+
 }
 
 suspend fun getAllTickets(): List<Ticket> {
@@ -358,6 +385,7 @@ suspend fun updateTicketWithHistory(
         newTicket.startTime?.let { patchPayload["start_time"] = it }
         newTicket.endTime?.let { patchPayload["end_time"] = it }
         newTicket.dueDate?.let { patchPayload["due_date"] = it }
+        newTicket.ticketType?.let { patchPayload["ticket_type"] = it }
         patchPayload["updated_at"] = Clock.System.now().toString()
 
         // 1️⃣ Update ticket
@@ -396,6 +424,7 @@ suspend fun updateTicketWithHistory(
         checkChange("start_time", oldTicket.startTime, newTicket.startTime)
         checkChange("end_time", oldTicket.endTime, newTicket.endTime)
         checkChange("due_date", oldTicket.dueDate, newTicket.dueDate)
+        checkChange("ticket_type", oldTicket.ticketType, newTicket.ticketType)
 
         // 3️⃣ Insert history (only if something changed)
         if (historyEntries.isNotEmpty()) {

@@ -27,6 +27,7 @@ import com.atu.jira.repo.createTicketWithRPC
 import com.atu.jira.repo.getTicketByTicketCode
 import com.atu.jira.repo.getTicketHistory
 import com.atu.jira.repo.getTicketsByUserId
+import com.atu.jira.screens.cleanEmailMessage
 import com.atu.jira.users.UserManager
 import com.atu.jira.utils.ResourceState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,6 +68,13 @@ class TicketViewModel : ViewModel() {
         MutableStateFlow<ResourceState<List<Ticket>>>(ResourceState.Idle)
     val allTicketsByUserIdState: StateFlow<ResourceState<List<Ticket>>> =
         _allTicketsByUserIdState.asStateFlow()
+
+    private val _moveTicketState = MutableStateFlow<ResourceState<Unit>>(ResourceState.Idle)
+    val moveTicketState: StateFlow<ResourceState<Unit>> = _moveTicketState.asStateFlow()
+
+    private val _addCommentState = MutableStateFlow<ResourceState<Unit>>(ResourceState.Idle)
+    val addCommentState: StateFlow<ResourceState<Unit>> = _addCommentState.asStateFlow()
+
 
     // for storing if edit mode is enabled or not
 
@@ -195,43 +203,44 @@ class TicketViewModel : ViewModel() {
         }
     }
 
-    fun addTicket(
-        title: String,
-        description: String,
-        status: String,
-        priority: String,
-        project: Project,
-        selectedUser: User?,
-        startTime: String?,
-        endTime: String?,
-        dueDate: String?,
-        onComplete: (Ticket) -> Unit
-    ) {
-        if (title.isBlank()) return
+    /* fun addTicket(
+         title: String,
+         description: String,
+         status: String,
+         priority: String,
+         project: Project,
+         selectedUser: User?,
+         startTime: String?,
+         endTime: String?,
+         dueDate: String?,
+         onComplete: (Ticket) -> Unit
+     ) {
+         if (title.isBlank()) return
 
-        viewModelScope.launch {
-            _actionState.value = ResourceState.Loading
-            try {
-                val newTicket = Ticket(
-                    title = title,
-                    description = description,
-                    status = status,
-                    projectId = project.id,
-                    assignedTo = selectedUser?.id,
-                    createdBy = AuthManager.userId,
-                    priority = priority,
-                    startTime = startTime,
-                    endTime = endTime,
-                    dueDate = dueDate
-                )
-                createTicket(newTicket)
-                _actionState.value = ResourceState.Success(Unit)
-                onComplete(newTicket)
-            } catch (e: Exception) {
-                _actionState.value = ResourceState.Error(e.message ?: "Failed to create ticket")
-            }
-        }
-    }
+         viewModelScope.launch {
+             _actionState.value = ResourceState.Loading
+             try {
+                 val newTicket = Ticket(
+                     title = title,
+                     description = description,
+                     status = status,
+                     projectId = project.id,
+                     assignedTo = selectedUser?.id,
+                     createdBy = AuthManager.userId,
+                     priority = priority,
+                     startTime = startTime,
+                     endTime = endTime,
+                     dueDate = dueDate
+                 )
+                 createTicket(newTicket)
+                 _actionState.value = ResourceState.Success(Unit)
+                 onComplete(newTicket)
+             } catch (e: Exception) {
+                 _actionState.value = ResourceState.Error(e.message ?: "Failed to create ticket")
+             }
+         }
+     }*/
+
 
     fun updateTicket(
         oldTicket: Ticket,
@@ -244,6 +253,7 @@ class TicketViewModel : ViewModel() {
         endTime: String?,
         dueDate: String?,
         projectId: String,
+        ticketType: String,
         onTicketUpdated: (Ticket) -> Unit
     ) {
         if (title.isBlank()) return
@@ -263,9 +273,21 @@ class TicketViewModel : ViewModel() {
                     startTime = startTime,
                     endTime = endTime,
                     dueDate = dueDate,
-                    createdAt = oldTicket.createdAt
+                    createdAt = oldTicket.createdAt,
+                    ticketType = ticketType
                 )
+                println("old_ticket_log -> $oldTicket")
                 updateTicketWithHistory(oldTicket = oldTicket, newTicket = newTicket)
+
+                // Notify assigned user using the response only if old and new assigned user is different
+                if (oldTicket.assignedTo != newTicket.assignedTo) {
+                    NotificationHelper.notifyUpdatedAssignedUser(
+                        newTicket.assignedTo!!,
+                        newTicket,
+                        ticketCode = oldTicket.ticketCode
+                    )
+                }
+
                 _updateTicketState.value = ResourceState.Success(Unit)
                 onTicketUpdated(newTicket)
             } catch (e: Exception) {
@@ -286,12 +308,18 @@ class TicketViewModel : ViewModel() {
         }
     }
 
-    fun updateTicketStatus(ticket: Ticket, newStatus: String) {
+    fun moveTicketStatus(ticket: Ticket, newStatus: String, onMoveApiCallback: (Boolean) -> Unit) {
         viewModelScope.launch {
+            _moveTicketState.value = ResourceState.Loading
             try {
                 updateTicketStatus(ticket.id!!, newStatus)
+                _moveTicketState.value = ResourceState.Success(Unit)
+                onMoveApiCallback(true)
+
             } catch (e: Exception) {
                 // Handle background move error
+                _moveTicketState.value = ResourceState.Error(e.message ?: "Failed to update status")
+                onMoveApiCallback(false)
             }
         }
     }
@@ -307,21 +335,48 @@ class TicketViewModel : ViewModel() {
         }
     }
 
-    fun addCommentToTicket(ticketId: String, content: String, parentId: String) {
+    fun addCommentToTicket(
+        ticketId: String,
+        content: String,
+        parentId: String,
+        onCommentAdded: (Boolean) -> Unit
+    ) {
         viewModelScope.launch {
+            _addCommentState.value = ResourceState.Loading
             try {
                 val newComment = Comment(
                     ticketId = ticketId,
                     content = content,
                     createdBy = AuthManager.userId ?: "user_1",
-                    parentId = parentId
+                    parentId = parentId.takeIf { it.isNotBlank() }
                 )
                 addComment(newComment)
+                _addCommentState.value = ResourceState.Success(Unit)
                 loadComments(ticketId)
+                onCommentAdded(true)
+
             } catch (e: Exception) {
                 // Handle background comment error
+                onCommentAdded(false)
+                _addCommentState.value = ResourceState.Error(e.message ?: "Failed to load comments")
+
             }
         }
+    }
+
+    fun notifyToMentionedUsers(validIds: List<String>, ticket: Ticket, html: String) {
+        viewModelScope.launch {
+            try {
+                NotificationHelper.notifyMentionedUsers(
+                    validIds,
+                    ticket,
+                    cleanEmailMessage(html)
+                )
+            } catch (ex: Exception) {
+
+            }
+        }
+
     }
 
     fun loadTicketHistory(ticketId: String) {

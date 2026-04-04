@@ -81,7 +81,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                     )
                 }
 
-                composable<EditTicketRoute> { backStackEntry ->
+              /*  composable<EditTicketRoute> { backStackEntry ->
                     val route = backStackEntry.toRoute<EditTicketRoute>()
 
                     EditTicketScreen(
@@ -104,7 +104,8 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                         },
                         onSearchClick = onSearchClick
                     )
-                }
+                }*/
+
 
                 composable<SignupRoute> {
                     SignupScreen(
