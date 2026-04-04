@@ -11,7 +11,11 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+        // This is the key: tell Gradle to download the JDK if missing
+        vendor.set(JvmVendorSpec.ADOPTIUM)
+    }
     @Suppress("DEPRECATION")
     androidTarget {
         compilerOptions {
