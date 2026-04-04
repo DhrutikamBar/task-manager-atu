@@ -54,6 +54,7 @@ import com.atu.jira.utils.ResourceState
 import com.atu.jira.viewmodel.TicketViewModel
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import kotlin.time.Clock
 
 /*@Composable
 fun CreateTicketScreen(
@@ -394,8 +395,8 @@ fun TicketSidePanel(
     var priority by remember { mutableStateOf("medium") }
     var selectedUser by remember { mutableStateOf<User?>(null) }
 
-    var startTime by remember { mutableStateOf("") }
-    var endTime by remember { mutableStateOf("") }
+    var startTime by remember { mutableStateOf(Clock.System.now().toString()) }
+    var endTime by remember { mutableStateOf(Clock.System.now().toString()) }
     var dueDate by remember { mutableStateOf("") }
 
     JiraCard(Modifier.fillMaxWidth()) {
@@ -441,8 +442,8 @@ fun TicketSidePanel(
                     selectedUser = selectedUser,
                     onUserSelected = { selectedUser = it }
                 )
-                DatePickerField("Start Time", startTime) { startTime = it }
-                DatePickerField("End Time", endTime) { endTime = it }
+             /*   DatePickerField("Start Time", startTime) { startTime = it }
+                DatePickerField("End Time", endTime) { endTime = it }*/
                 DatePickerField("Due Date", dueDate) { dueDate = it }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -494,8 +495,8 @@ fun TicketMainForm(
     var status by remember { mutableStateOf(Status.TODO.value) }
     var priority by remember { mutableStateOf("medium") }
 
-    var startTime by remember { mutableStateOf("") }
-    var endTime by remember { mutableStateOf("") }
+    var startTime by remember { mutableStateOf(Clock.System.now().toString()) }
+    var endTime by remember { mutableStateOf(Clock.System.now().toString()) }
     var dueDate by remember { mutableStateOf("") }
 
     var selectedTicketType by remember { mutableStateOf("") }
@@ -566,11 +567,11 @@ fun TicketMainForm(
     Spacer(Modifier.height(16.dp))
 
     // 🔹 Dates
-    DatePickerField("Start Time", startTime) { startTime = it }
+   /* DatePickerField("Start Time", startTime) { startTime = it }
     Spacer(Modifier.height(16.dp))
 
     DatePickerField("End Time", endTime) { endTime = it }
-    Spacer(Modifier.height(16.dp))
+    Spacer(Modifier.height(16.dp))*/
 
     DatePickerField("Due Date", dueDate) { dueDate = it }
 

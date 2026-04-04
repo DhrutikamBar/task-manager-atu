@@ -1,12 +1,10 @@
 [build]
-command = """
-bash -c '
-curl -s https://get.sdkman.io | bash &&
-source "$HOME/.sdkman/bin/sdkman-init.sh" &&
-sdk install java 17.0.10-tem &&
-sdk use java 17.0.10-tem &&
-java -version &&
-./gradlew :composeApp:wasmJsBrowserDistribution --stacktrace
-'
-"""
+# Simple command - the jvmToolchain in your code handles the rest
+command = "./gradlew :composeApp:wasmJsBrowserDistribution"
+
+# Your CMP Web output path
 publish = "composeApp/build/dist/wasmJs/productionExecutable"
+
+[build.environment]
+# Tell Netlify to provide Java 11 to match your code
+JAVA_VERSION = "17"
