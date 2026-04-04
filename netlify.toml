@@ -1,11 +1,12 @@
 [build]
-# Simple command - the jvmToolchain in your code handles the rest
-command = "./gradlew :composeApp:wasmJsBrowserDistribution --no-configuration-cache"
-
-# Your CMP Web output path
+command = "./gradlew :composeApp:wasmJsBrowserDistribution --no-daemon"
 publish = "composeApp/build/dist/wasmJs/productionExecutable"
 
 [build.environment]
-# Tell Netlify to provide Java 17 to match your code
+# Forcing Java 17 as the primary runner
 JAVA_VERSION = "17"
 JDK_VERSION = "17"
+# Some Netlify images use ASDF for version management
+ASDF_JAVA_VERSION = "17"
+# Required for modern Kotlin Wasm/JS bundling
+NODE_VERSION = "20"
