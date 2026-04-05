@@ -56,7 +56,6 @@ import com.atu.jira.auth.AuthManager
 import com.atu.jira.components.CommentShimmerItem
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.components.DevicePosture
-import com.atu.jira.components.HistoryShimmerItem
 import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraCard
 import com.atu.jira.components.JiraTextField
@@ -64,17 +63,17 @@ import com.atu.jira.LocalTicketEditMode
 import com.atu.jira.components.BaseEditableField
 import com.atu.jira.components.DrawerContent
 import com.atu.jira.components.MainButton
-import com.atu.jira.components.ResourceHandler
+import com.atu.jira.components.UIStateHandler
 import com.atu.jira.components.TicketShimmerItem
 import com.atu.jira.components.calculateDevicePosture
 import com.atu.jira.model.Comment
 import com.atu.jira.model.Project
 import com.atu.jira.model.Status
 import com.atu.jira.model.Ticket
-import com.atu.jira.model.TicketHistory
 import com.atu.jira.model.TicketType
 import com.atu.jira.model.User
-import com.atu.jira.notification.NotificationHelper
+import com.atu.jira.screens.mobile.TicketDetailsUIMobile
+import com.atu.jira.screens.tabAndDesktop.TicketDetailsUIWeb
 import com.atu.jira.users.UserManager
 import com.atu.jira.utils.DateFormatter
 import com.atu.jira.viewmodel.TicketViewModel
@@ -86,6 +85,7 @@ import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform.getKoin
 import kotlin.math.absoluteValue
 
 
@@ -313,7 +313,7 @@ fun UserSearchView(
                         searchText = ""
                         isDropdownOpen = false
                         UserManager.getUser(AuthManager.userId)?.let { onUserSelected(it) }
-                    }) {
+                    }, modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)) {
                         Icon(Icons.Default.Close, contentDescription = null)
                     }
                 }
@@ -338,6 +338,7 @@ fun UserSearchView(
                             text = user.name,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .pointerHoverIcon(PointerIcon.Hand)
                                 .clickable {
                                     onUserSelected(user)
                                     searchText = user.name
@@ -355,13 +356,15 @@ fun UserSearchView(
 @Composable
 fun TicketBoardScreen(
     project: Project,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onTicketClick: (Ticket) -> Unit,
     onBack: () -> Unit,
     onAddTicket: () -> Unit,
     onSearchClick: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val ticketsState by viewModel.ticketsState.collectAsState()
 
     LaunchedEffect(project.id) {
@@ -400,7 +403,7 @@ fun TicketBoardScreen(
 
         }
 
-        ResourceHandler(
+        UIStateHandler(
             state = ticketsState,
             onLoading = {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
@@ -433,81 +436,24 @@ fun TicketBoardScreen(
                 val isWideScreen = maxWidth > 600.dp
 
                 if (isWideScreen) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        StatusColumn(
-                            title = "To Do",
-                            tickets = tickets.filter { it.status == Status.TODO.value },
-                            onTicketClick = onTicketClick,
-                            onMove = {
-                                viewModel.moveTicket(
-                                    it,
-                                    Status.IN_PROGRESS.value,
-                                    project.id
-                                )
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        StatusColumn(
-                            title = "In Progress",
-                            tickets = tickets.filter { it.status == Status.IN_PROGRESS.value },
-                            onTicketClick = onTicketClick,
-                            onMove = { viewModel.moveTicket(it, Status.CLOSED.value, project.id) },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        StatusColumn(
-                            title = "Done",
-                            tickets = tickets.filter { it.status == Status.CLOSED.value },
-                            onTicketClick = onTicketClick,
-                            onMove = null,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    TicketBoardScreenDesktop(
+                        tickets,
+                        onTicketClick = onTicketClick,
+                        project = project,
+                    )
                 } else {
                     // Mobile: Vertically stacked columns
-                    Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        StatusColumn(
-                            title = "To Do",
-                            tickets = tickets.filter { it.status == Status.TODO.value },
-                            onTicketClick = onTicketClick,
-                            onMove = {
-                                viewModel.moveTicket(
-                                    it,
-                                    Status.IN_PROGRESS.value,
-                                    project.id
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
-                        )
-
-                        StatusColumn(
-                            title = "In Progress",
-                            tickets = tickets.filter { it.status == Status.IN_PROGRESS.value },
-                            onTicketClick = onTicketClick,
-                            onMove = { viewModel.moveTicket(it, Status.CLOSED.value, project.id) },
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
-                        )
-
-                        StatusColumn(
-                            title = "Done",
-                            tickets = tickets.filter { it.status == Status.CLOSED.value },
-                            onTicketClick = onTicketClick,
-                            onMove = null,
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
-                        )
-                    }
+                    TicketBoardScreenMobileV2(
+                        tickets,
+                        onTicketClick = onTicketClick,
+                        project = project
+                    )
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun BoardColumnSkeleton() {
@@ -699,7 +645,8 @@ fun TicketCardV2(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = UserManager.getUserName(ticket.assignedTo)?.take(1)?.uppercase() ?: "?",
+                            text = UserManager.getUserName(ticket.assignedTo)?.take(1)?.uppercase()
+                                ?: "?",
                             color = borderColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
@@ -1005,12 +952,14 @@ fun KeyValueRowItem(key: String, value: String) {
 @Composable
 fun TicketDetailScreenV7(
     ticketCode: String,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onBack: () -> Unit,
     onSearchClick: () -> Unit,
     onLogout: () -> Unit,
     onClickEditTicket: (Ticket) -> Unit
 ) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val historyState by viewModel.historyState.collectAsState()
     val usersState by viewModel.usersState.collectAsState()
 
@@ -1034,7 +983,7 @@ fun TicketDetailScreenV7(
                 DrawerContent(scope, historyState, drawerState)
             }
         ) {
-            ResourceHandler(
+            UIStateHandler(
                 state = fetchTicketState,
                 onLoading = {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1044,30 +993,94 @@ fun TicketDetailScreenV7(
             ) { ticket ->
 
                 ticket?.let {
+                    val commentsState by viewModel.commentsState.collectAsState()
+                    var isTabletOrDesktop = true
+                    val posture = calculateDevicePosture()
+                    var editableTicket = viewModel.editableTicket
+
+
+                    when (posture) {
+                        DevicePosture.Desktop -> {
+                            isTabletOrDesktop = true
+                        }
+
+                        DevicePosture.Tablet -> {
+                            isTabletOrDesktop = true
+                        }
+
+                        DevicePosture.Mobile -> {
+                            isTabletOrDesktop = false
+                        }
+                    }
+
+                    LaunchedEffect(ticket.id) {
+                        viewModel.loadComments(ticket.id.toString())
+                    }
+
+                    LaunchedEffect(ticket.id) {
+                        viewModel.initEditableTicket(ticket)
+                    }
+
+                    val descState = rememberRichTextState()
+                    LaunchedEffect(ticket.description) {
+                        descState.setHtml(ticket.description)
+                    }
+
+                    var title by remember { mutableStateOf(ticket.title) }
+
+
                     // YOUR EXISTING SCREEN CONTENT HERE
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                         // Basic detail view for now
-                        Column(Modifier.fillMaxSize()) {
-                            CommonTopBar(
-                                title = "Ticket Details",
-                                showBack = true,
-                                onBack = onBack,
-                                onLogout = onLogout,
-                                onSearch = onSearchClick
-                            )
-                            HorizontalDivider()
+                        LazyColumn(Modifier.fillMaxSize()) {
+                            stickyHeader {
+                                CommonTopBar(
+                                    title = "Ticket Details",
+                                    showBack = true,
+                                    onBack = onBack,
+                                    onLogout = onLogout,
+                                    onSearch = onSearchClick
+                                )
+                                HorizontalDivider()
+                            }
 
-                            Spacer(modifier = Modifier.height(11.dp))
+                            if (isTabletOrDesktop) {
+                                // show both UI & content
+                                item {
+                                    Spacer(modifier = Modifier.height(11.dp))
 
-                            TicketDetailsUI(
-                                ticket,
-                                onTicketEditClick = {
-                                    viewModel.initEditableTicket(ticket)
-                                    viewModel.enableEdit()
-                                },
-                                scope = scope,
-                                drawerState = drawerState
-                            )
+                                    TicketDetailsUIWeb(
+                                        ticket,
+                                        onTicketEditClick = {
+                                            viewModel.initEditableTicket(ticket)
+                                            viewModel.enableEdit()
+                                        },
+                                        scope = scope,
+                                        drawerState = drawerState,
+                                        descState = descState,
+                                        commentsState = commentsState
+                                    )
+                                }
+
+                            } else {
+                                // show mobile only UI & content
+                                item {
+                                    Spacer(modifier = Modifier.height(11.dp))
+
+                                    TicketDetailsUIMobile(
+                                        ticket,
+                                        onTicketEditClick = {
+                                            viewModel.initEditableTicket(ticket)
+                                            viewModel.enableEdit()
+                                        },
+                                        scope = scope,
+                                        drawerState = drawerState,
+                                        descState = descState,
+                                        commentsState = commentsState,
+                                    )
+                                }
+
+                            }
 
 
                         }
@@ -1084,11 +1097,13 @@ fun TicketDetailScreenV7(
 @Composable
 fun TicketDetailsUI(
     ticket: Ticket?,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onTicketEditClick: (Ticket) -> Unit,
     scope: CoroutineScope,
     drawerState: DrawerState,
 ) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val commentsState by viewModel.commentsState.collectAsState()
     var isTabletOrDesktop = true
     val posture = calculateDevicePosture()
@@ -1124,207 +1139,85 @@ fun TicketDetailsUI(
         }
 
 
-        if (isTabletOrDesktop) {
-            Row(modifier = Modifier.fillMaxWidth().absolutePadding(left = 11.dp, right = 11.dp)) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .weight(.6f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-
-                    // 🔹 Ticket Info Card
-                    item {
-                        JiraCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-
-                                Text(
-                                    text = ticket.ticketCode ?: "",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-
-                                Spacer(Modifier.height(6.dp))
-                                BaseEditableField(
-                                    viewMode = {
-                                        Text(
-                                            text = ticket.title,
-                                            style = MaterialTheme.typography.headlineSmall
-                                        )
-                                    },
-                                    editMode = {
-                                        JiraTextField(
-                                            value = editableTicket?.title ?: "",
-                                            onValueChange = {
-                                                editableTicket = editableTicket?.copy(title = it)
-                                            },
-                                            label = "Title"
-                                        )
-                                    }
-                                )
-
-                                /*  Text(
-                                      text = ticket.title,
-                                      style = MaterialTheme.typography.headlineSmall
-                                  )*/
-
-                                Spacer(Modifier.height(12.dp))
-
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .padding(12.dp)
-                                ) {
-                                    BaseEditableField(viewMode = {
-                                        RichText(
-                                            state = descState,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }, editMode = {
-                                        JiraRichTextEditor(
-                                            state = descState,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    })
-
-                                }
-                            }
-                        }
-                    }
-
-                    // 🔹 Add Comment Card
-                    item {
-                        BaseEditableField(viewMode = {
-                            JiraCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-
-                                    Text(
-                                        "Add Comment",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-
-                                    Spacer(Modifier.height(12.dp))
-
-                                    val users = UserManager.getAllUsers()
-
-                                    JiraCommentBoxV2(
-                                        ticket,
-                                        users,
-                                        onSend = { htmlComment, mentionedIds ->
-                                            viewModel.addCommentToTicket(
-                                                ticket.id.toString(),
-                                                htmlComment,
-                                                parentId = "", onCommentAdded = {
-                                                    viewModel.notifyToMentionedUsers(
-                                                        validIds = mentionedIds,
-                                                        ticket = ticket,
-                                                        html = htmlComment
-                                                    )
-                                                }
-                                            )
-                                        })
-                                }
-                            }
-                        }, editMode = {
+        /* if (isTabletOrDesktop) {
+             TicketDetailsUIWeb(
+                 ticket,
+                 onTicketEditClick,
+                 scope,
+                 drawerState,
+                 descState,
+                 viewModel,
+                 commentsState
+             )
+         } else {
+             TicketDetailsUIMobile(
+                 ticket,
+                 onTicketEditClick,
+                 scope,
+                 drawerState,
+                 descState,
+                 viewModel,
+                 commentsState
+             )
 
 
-                        })
-
-                    }
-
-                    // 🔹 Comments Card
-                    item {
-                        BaseEditableField(viewMode = {
-
-                            JiraCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-
-                                    Text(
-                                        "Comments",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-
-                                    Spacer(Modifier.height(12.dp))
-
-                                    ResourceHandler(
-                                        state = commentsState,
-                                        onLoading = {
-                                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                repeat(3) { CommentShimmerItem() }
-                                            }
-                                        }
-                                    ) { comments ->
-
-                                        val parentComments = comments.filter { it.parentId == null }
-
-                                        fun getReplies(parentId: String): List<Comment> {
-                                            return comments.filter { it.parentId == parentId }
-                                        }
-
-                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
-                                            parentComments.forEach { parent ->
-
-                                                CommentItem(parent, ticket = ticket)
-
-                                                val replies = getReplies(parent.id ?: "")
-
-                                                if (replies.isNotEmpty()) {
-                                                    Column(
-                                                        modifier = Modifier.padding(start = 16.dp),
-                                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                                    ) {
-                                                        replies.forEach { reply ->
-                                                            ReplyItemForComment(reply)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }, editMode = {
-
-                        })
-
-                    }
-                }
+         }*/
+    }
 
 
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column(modifier = Modifier.weight(.4f)) {
-                    TicketDetailsListComponent(
-                        ticket,
-                        onTicketEditClick,
-                        onclickLoadTicketHistory = {
-                            scope.launch {
-                                viewModel.loadTicketHistory(ticket.id.toString())
-                                drawerState.open()
-                            }
-                        }, onTicketUpdated = {
-
-                            viewModel.fetchTicketByTicketCode(ticket?.ticketCode ?: "")
+}
 
 
-                        }, descriptionState = descState
-                    )
+@Composable
+fun TicketDetailsUIV2(
+    ticket: Ticket?,
+    onTicketEditClick: (Ticket) -> Unit,
+    scope: CoroutineScope,
+    drawerState: DrawerState,
+) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
+    val commentsState by viewModel.commentsState.collectAsState()
+    var isTabletOrDesktop = true
+    val posture = calculateDevicePosture()
+    var editableTicket = viewModel.editableTicket
 
 
-                }
+    when (posture) {
+        DevicePosture.Desktop -> {
+            isTabletOrDesktop = true
+        }
 
-            }
-        } else {
+        DevicePosture.Tablet -> {
+            isTabletOrDesktop = true
+        }
+
+        DevicePosture.Mobile -> {
+            isTabletOrDesktop = false
+        }
+    }
+
+    ticket?.let {
+        LaunchedEffect(ticket.id) {
+            viewModel.loadComments(ticket.id.toString())
+        }
+
+        LaunchedEffect(ticket.id) {
+            viewModel.initEditableTicket(ticket)
+        }
+
+        val descState = rememberRichTextState()
+        LaunchedEffect(ticket.description) {
+            descState.setHtml(ticket.description)
+        }
+
+        Row(modifier = Modifier.fillMaxWidth().absolutePadding(left = 11.dp, right = 11.dp)) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 12.dp)
+                    .weight(.6f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
@@ -1340,18 +1233,215 @@ fun TicketDetailsUI(
                             )
 
                             Spacer(Modifier.height(6.dp))
-
-                            Text(
-                                text = ticket.title,
-                                style = MaterialTheme.typography.headlineSmall
+                            BaseEditableField(
+                                viewMode = {
+                                    Text(
+                                        text = ticket.title,
+                                        style = MaterialTheme.typography.headlineSmall
+                                    )
+                                },
+                                editMode = {
+                                    JiraTextField(
+                                        value = editableTicket?.title ?: "",
+                                        onValueChange = {
+                                            editableTicket = editableTicket?.copy(title = it)
+                                        },
+                                        label = "Title"
+                                    )
+                                }
                             )
+
+                            /*  Text(
+                                  text = ticket.title,
+                                  style = MaterialTheme.typography.headlineSmall
+                              )*/
 
                             Spacer(Modifier.height(12.dp))
 
-                            val descState = rememberRichTextState()
-                            LaunchedEffect(ticket.description) {
-                                descState.setHtml(ticket.description)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(12.dp)
+                            ) {
+                                BaseEditableField(viewMode = {
+                                    RichText(
+                                        state = descState,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }, editMode = {
+                                    JiraRichTextEditor(
+                                        state = descState,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                })
+
                             }
+                        }
+                    }
+                }
+
+                // 🔹 Add Comment Card
+                item {
+                    BaseEditableField(viewMode = {
+                        JiraCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+
+                                Text(
+                                    "Add Comment",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                Spacer(Modifier.height(12.dp))
+
+                                val users = UserManager.getAllUsers()
+
+                                JiraCommentBoxV2(
+                                    ticket,
+                                    users,
+                                    onSend = { htmlComment, mentionedIds ->
+                                        viewModel.addCommentToTicket(
+                                            ticket.id.toString(),
+                                            htmlComment,
+                                            parentId = "", onCommentAdded = {
+                                                viewModel.notifyToMentionedUsers(
+                                                    validIds = mentionedIds,
+                                                    ticket = ticket,
+                                                    html = htmlComment
+                                                )
+                                            }
+                                        )
+                                    })
+                            }
+                        }
+                    }, editMode = {
+
+
+                    })
+
+                }
+
+                // 🔹 Comments Card
+                item {
+                    BaseEditableField(viewMode = {
+
+                        JiraCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+
+                                Text(
+                                    "Comments",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                Spacer(Modifier.height(12.dp))
+
+                                UIStateHandler(
+                                    state = commentsState,
+                                    onLoading = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            repeat(3) { CommentShimmerItem() }
+                                        }
+                                    }
+                                ) { comments ->
+
+                                    val parentComments = comments.filter { it.parentId == null }
+
+                                    fun getReplies(parentId: String): List<Comment> {
+                                        return comments.filter { it.parentId == parentId }
+                                    }
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                                        parentComments.forEach { parent ->
+
+                                            CommentItem(parent, ticket = ticket)
+
+                                            val replies = getReplies(parent.id ?: "")
+
+                                            if (replies.isNotEmpty()) {
+                                                Column(
+                                                    modifier = Modifier.padding(start = 16.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    replies.forEach { reply ->
+                                                        ReplyItemForComment(reply)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }, editMode = {
+
+                    })
+
+                }
+            }
+
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(.4f)) {
+                TicketDetailsListComponent(
+                    ticket,
+                    onTicketEditClick,
+                    onclickLoadTicketHistory = {
+                        scope.launch {
+                            viewModel.loadTicketHistory(ticket.id.toString())
+                            drawerState.open()
+                        }
+                    }, onTicketUpdated = {
+
+                        viewModel.fetchTicketByTicketCode(ticket?.ticketCode ?: "")
+
+
+                    }, descriptionState = descState
+                )
+
+
+            }
+
+        }
+
+        /* if (isTabletOrDesktop) {
+
+         } else {
+             LazyColumn(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(horizontal = 12.dp),
+                 verticalArrangement = Arrangement.spacedBy(16.dp)
+             ) {
+
+                 // 🔹 Ticket Info Card
+                 item {
+                     JiraCard(modifier = Modifier.fillMaxWidth()) {
+                         Column(modifier = Modifier.padding(16.dp)) {
+
+                             Text(
+                                 text = ticket.ticketCode ?: "",
+                                 style = MaterialTheme.typography.labelMedium,
+                                 color = MaterialTheme.colorScheme.primary
+                             )
+
+                             Spacer(Modifier.height(6.dp))
+
+                             Text(
+                                 text = ticket.title,
+                                 style = MaterialTheme.typography.headlineSmall
+                             )
+
+                             Spacer(Modifier.height(12.dp))
+
+                             *//*   val descState = rememberRichTextState()
+                               LaunchedEffect(ticket.description) {
+                                   descState.setHtml(ticket.description)
+                               }*//*
 
                             Box(
                                 modifier = Modifier
@@ -1485,12 +1575,11 @@ fun TicketDetailsUI(
             }
 
 
-        }
+        }*/
     }
 
 
 }
-
 
 @Composable
 fun ActionIcon(
@@ -1598,15 +1687,17 @@ fun TicketDetailsListComponent(
     ticket: Ticket,
     onClickEditTicket: (Ticket) -> Unit,
     onclickLoadTicketHistory: (String) -> Unit,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onTicketUpdated: (Ticket) -> Unit,
     descriptionState: RichTextState
 ) {
 
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val isEditMode = viewModel.isEditMode
     val editableTicket = viewModel.editableTicket
 
-    var title by remember { mutableStateOf(ticket.title) }
+    //  var title by remember { mutableStateOf(ticket.title) }
 
     var selectedUser by remember { mutableStateOf<User?>(UserManager.getUser(ticket.assignedTo)) }
     var status by remember { mutableStateOf(ticket.status) }
@@ -1677,7 +1768,7 @@ fun TicketDetailsListComponent(
 
                                         viewModel.updateTicket(
                                             oldTicket = ticket,
-                                            title = title,
+                                            title = updated.title ?: "",
                                             description = descriptionState.toHtml(),
                                             newStatus = status,
                                             priority = priority,
@@ -1715,131 +1806,126 @@ fun TicketDetailsListComponent(
 
             Spacer(Modifier.height(16.dp))
 
-            LazyColumn {
-
-                item {
-                    // 🔷 DETAILS CONTENT
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        // TicketTypeChips(selectedType = TicketType.BUG.name, onTypeSelected = {})
+            // 🔷 DETAILS CONTENT
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // TicketTypeChips(selectedType = TicketType.BUG.name, onTypeSelected = {})
 
 
-                        BaseEditableField(
-                            viewMode = {
-                                /*  Text(
-                                      text = ticket.title,
-                                      style = MaterialTheme.typography.headlineSmall
-                                  )*/
+                BaseEditableField(
+                    viewMode = {
+                        /*  Text(
+                              text = ticket.title,
+                              style = MaterialTheme.typography.headlineSmall
+                          )*/
 
-                                TicketTypeDisplay(ticket.ticketType)
+                        TicketTypeDisplay(ticket.ticketType)
 
 
+                    },
+                    editMode = {
+                        TicketTypeChips(
+                            selectedType = selectedTicketType,
+                            onTypeSelected = {
+                                selectedTicketType = it
+                            })
+
+                        /*JiraTextField(
+                            value = editableTicket?.title?:"",
+                            onValueChange = {
+                                editableTicket = editableTicket?.copy(title = it)
                             },
-                            editMode = {
-                                TicketTypeChips(
-                                    selectedType = selectedTicketType,
-                                    onTypeSelected = {
-                                        selectedTicketType = it
-                                    })
-
-                                /*JiraTextField(
-                                    value = editableTicket?.title?:"",
-                                    onValueChange = {
-                                        editableTicket = editableTicket?.copy(title = it)
-                                    },
-                                    label = "Title"
-                                )*/
-                            }
-                        )
+                            label = "Title"
+                        )*/
+                    }
+                )
 
 
-                        BaseEditableField(viewMode = {
-                            DetailItem(
-                                icon = Icons.Default.Flag,
-                                label = "Priority",
-                                valueComposable = {
-                                    PriorityBadge(ticket.priority ?: "Not set")
-                                }
-                            )
-                        }, editMode = {
-                            // 🔹 Priority
-                            SimpleDropdown(
-                                label = "Priority",
-                                options = listOf("low", "medium", "high", "critical"),
-                                selectedOption = priority,
-                                onOptionSelected = {
-                                    priority = it
-                                }
-                            )
-                        })
-
-
-                        BaseEditableField(viewMode = {
-                            DetailItem(
-                                icon = Icons.Default.DateRange,
-                                label = "Due Date",
-                                value = Utils.formatDateTime(ticket.dueDate ?: "")
-                            )
-                        }, editMode = {
-                            DatePickerField("Due Date", dueDate) { dueDate = it }
-
-                        })
-
-
-                        BaseEditableField(viewMode = {
-                            DetailItem(
-                                icon = Icons.Default.Person,
-                                label = "Assigned To",
-                                value = UserManager.getUserName(ticket.assignedTo)
-                            )
-                        }, editMode = {
-                            UserSearchView(
-                                users = UserManager.getAllUsers(),
-                                selectedUser = selectedUser,
-                                onUserSelected = { selectedUser = it }
-                            )
-                        })
-
-
-                        DetailItem(
-                            icon = Icons.Default.Person,
-                            label = "Created By",
-                            value = UserManager.getUserName(ticket.createdBy)
-                        )
-
-                        DetailItem(
-                            icon = Icons.Default.Assignment,
-                            label = "Status",
-                            valueComposable = {
-                                PriorityBadge(ticket.status ?: "Not set")
-                            }
-                        )
-                        if (!isEditMode) {
-                            if (moveTicketState == ResourceState.Loading) {
-                                UpdateTicketLoading()
-                            } else {
-                                MoveToStatus(
-                                    currentStatus = ticket.status ?: "",
-                                    onStatusSelected = { newStatus ->
-                                        viewModel.moveTicketStatus(
-                                            ticket,
-                                            newStatus,
-                                            onMoveApiCallback = { isMoved ->
-                                                if (isMoved) {
-                                                    viewModel.fetchTicketByTicketCode(
-                                                        ticket?.ticketCode ?: ""
-                                                    )
-                                                }
-                                            })
-                                    }
-                                )
-
-                            }
+                BaseEditableField(viewMode = {
+                    DetailItem(
+                        icon = Icons.Default.Flag,
+                        label = "Priority",
+                        valueComposable = {
+                            PriorityBadge(ticket.priority ?: "Not set")
                         }
+                    )
+                }, editMode = {
+                    // 🔹 Priority
+                    SimpleDropdown(
+                        label = "Priority",
+                        options = listOf("low", "medium", "high", "critical"),
+                        selectedOption = priority,
+                        onOptionSelected = {
+                            priority = it
+                        }
+                    )
+                })
+
+
+                BaseEditableField(viewMode = {
+                    DetailItem(
+                        icon = Icons.Default.DateRange,
+                        label = "Due Date",
+                        value = Utils.formatDateTime(ticket.dueDate ?: "")
+                    )
+                }, editMode = {
+                    DatePickerField("Due Date", dueDate) { dueDate = it }
+
+                })
+
+
+                BaseEditableField(viewMode = {
+                    DetailItem(
+                        icon = Icons.Default.Person,
+                        label = "Assigned To",
+                        value = UserManager.getUserName(ticket.assignedTo)
+                    )
+                }, editMode = {
+                    UserSearchView(
+                        users = UserManager.getAllUsers(),
+                        selectedUser = selectedUser,
+                        onUserSelected = { selectedUser = it }
+                    )
+                })
+
+
+                DetailItem(
+                    icon = Icons.Default.Person,
+                    label = "Created By",
+                    value = UserManager.getUserName(ticket.createdBy)
+                )
+
+                DetailItem(
+                    icon = Icons.Default.Assignment,
+                    label = "Status",
+                    valueComposable = {
+                        PriorityBadge(ticket.status ?: "Not set")
+                    }
+                )
+                if (!isEditMode) {
+                    if (moveTicketState == ResourceState.Loading) {
+                        UpdateTicketLoading()
+                    } else {
+                        MoveToStatus(
+                            currentStatus = ticket.status ?: "",
+                            onStatusSelected = { newStatus ->
+                                viewModel.moveTicketStatus(
+                                    ticket,
+                                    newStatus,
+                                    onMoveApiCallback = { isMoved ->
+                                        if (isMoved) {
+                                            viewModel.fetchTicketByTicketCode(
+                                                ticket?.ticketCode ?: ""
+                                            )
+                                        }
+                                    })
+                            }
+                        )
 
                     }
                 }
+
             }
 
 
@@ -1911,6 +1997,7 @@ fun MoveToStatus(
                             Text(status.replace("_", " "))
                         }
                     },
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                     onClick = {
                         expanded = false
                         onStatusSelected(status)
@@ -1998,9 +2085,11 @@ fun DetailItem(
 @Composable
 fun CommentItem(
     comment: Comment,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     ticket: Ticket
 ) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val replyingToCommentId = remember { mutableStateOf("") }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -2223,6 +2312,7 @@ fun StatusChips(
             FilterChip(
                 selected = isSelected,
                 onClick = { onStatusSelected(value) },
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                 label = {
                     Text(
                         text = label,
@@ -2265,9 +2355,11 @@ fun getStatusColor(status: String?): Color {
 
 @Composable
 fun TaskListScreen(
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onTicketClick: (Ticket) -> Unit
 ) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val allTicketsState by viewModel.allTicketsState.collectAsState()
     var selectedUser by remember {
         mutableStateOf<User?>(
@@ -2288,20 +2380,26 @@ fun TaskListScreen(
         viewModel.getAllTicketsByUserId(selectedUser?.id ?: "")
     }
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxHeight().padding(16.dp).widthIn(max=500.dp)) {
         /*  Text("All My Tasks", style = MaterialTheme.typography.headlineSmall)
           Spacer(Modifier.height(16.dp))*/
 
-        ResourceHandler(
-            state = usersState,
-            onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-        ) { users ->
-            UserSearchView(
-                users = users,
-                selectedUser = selectedUser,
-                onUserSelected = { selectedUser = it }
-            )
-        }
+        UserSearchView(
+            users = UserManager.getAllUsers(),
+            selectedUser = selectedUser,
+            onUserSelected = { selectedUser = it }
+        )
+
+        /* UIStateHandler(
+             state = usersState,
+             onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+         ) { users ->
+             UserSearchView(
+                 users = users,
+                 selectedUser = selectedUser,
+                 onUserSelected = { selectedUser = it }
+             )
+         }*/
 
 
         StatusChips(selectedStatus = selectedStatus, onStatusSelected = { status ->
@@ -2311,7 +2409,7 @@ fun TaskListScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        ResourceHandler(
+        UIStateHandler(
             state = allTicketsState,
             onLoading = {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2345,8 +2443,10 @@ fun EditTicketScreen(
     ticket: Ticket,
     onTicketUpdated: (Ticket) -> Unit,
     onSearchClick: () -> Unit,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
 ) {
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     val usersState by viewModel.usersState.collectAsState()
     val updateState by viewModel.updateTicketState.collectAsState()
 
@@ -2430,7 +2530,7 @@ fun EditTicketScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            ResourceHandler(
+            UIStateHandler(
                 state = usersState,
                 onLoading = { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             ) { users ->

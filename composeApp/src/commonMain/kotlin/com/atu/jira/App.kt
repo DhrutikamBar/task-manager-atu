@@ -119,7 +119,7 @@ fun App(onNavControllerCreated: (NavHostController) -> Unit = {}) {
                 }
 
                 composable<HomeRoute> {
-                    HomeScreen(
+                    HomeScreenV2(
                         onProjectsClick = { project ->
                             navController.navigate(BoardRoute(project.id, project.name))
                         },

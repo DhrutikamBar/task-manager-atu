@@ -80,6 +80,8 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             // commonMain
             implementation("org.jetbrains.compose.material3.adaptive:adaptive:1.3.0-alpha02")
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -121,7 +123,6 @@ kotlin {
                 implementation(libs.ktor.client.js)
                 implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc13")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-
             }
         }
     }

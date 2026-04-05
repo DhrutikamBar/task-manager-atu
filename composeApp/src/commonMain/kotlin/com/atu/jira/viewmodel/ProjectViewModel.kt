@@ -26,8 +26,12 @@ class ProjectViewModel : ViewModel() {
     private val _usersState = MutableStateFlow<ResourceState<List<User>>>(ResourceState.Idle)
     val usersState: StateFlow<ResourceState<List<User>>> = _usersState.asStateFlow()
 
+    private var isLoaded = false
 
-    fun loadProjects() {
+    fun loadProjects(forceRefresh: Boolean = false) {
+
+        if (isLoaded && !forceRefresh) return
+        isLoaded = true
         viewModelScope.launch {
             _projectsState.value = ResourceState.Loading
             try {
@@ -52,13 +56,13 @@ class ProjectViewModel : ViewModel() {
     }
 
     fun addProject(
-        name: String, 
-        projectCode: String, 
-        description: String?, 
+        name: String,
+        projectCode: String,
+        description: String?,
         onComplete: (Project) -> Unit
     ) {
         if (name.isBlank() || projectCode.isBlank()) return
-        
+
         viewModelScope.launch {
             _createProjectState.value = ResourceState.Loading
             try {
@@ -74,11 +78,12 @@ class ProjectViewModel : ViewModel() {
                 _createProjectState.value = ResourceState.Success(project)
                 onComplete(project)
             } catch (e: Exception) {
-                _createProjectState.value = ResourceState.Error(e.message ?: "Failed to create project")
+                _createProjectState.value =
+                    ResourceState.Error(e.message ?: "Failed to create project")
             }
         }
     }
-    
+
     fun resetCreateState() {
         _createProjectState.value = ResourceState.Idle
     }

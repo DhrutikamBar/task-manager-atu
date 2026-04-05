@@ -3,7 +3,6 @@ package com.atu.jira.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -205,7 +204,7 @@ fun HistoryShimmerItem() {
 
 
 @Composable
-fun <T> ResourceHandler(
+fun <T> UIStateHandler(
     state: ResourceState<T>,
     onIdle: @Composable () -> Unit = {},
     onLoading: @Composable () -> Unit = { LoadingUI() },

@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.atu.jira.auth.AuthManager
+import com.atu.jira.koin.initKoin
 import com.atu.jira.utils.AndroidSessionStorage
 
 class MainActivity : ComponentActivity() {
@@ -14,6 +15,7 @@ class MainActivity : ComponentActivity() {
        // enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AuthManager.sessionStorage = AndroidSessionStorage(this)
+        initKoin()
         setContent {
             App()
         }

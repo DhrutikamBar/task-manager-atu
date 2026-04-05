@@ -25,21 +25,24 @@ import com.atu.jira.components.JiraButton
 import com.atu.jira.components.JiraTextField
 import com.atu.jira.components.MainButton
 import com.atu.jira.components.ProjectShimmerItem
-import com.atu.jira.components.ResourceHandler
+import com.atu.jira.components.UIStateHandler
 import com.atu.jira.model.Project
 import com.atu.jira.users.UserManager
 import com.atu.jira.viewmodel.ProjectViewModel
 import com.atu.jira.utils.ResourceState
+import org.koin.mp.KoinPlatform.getKoin
 
 @Composable
 fun ProjectListScreen(
-    viewModel: ProjectViewModel = viewModel { ProjectViewModel() },
     onProjectClick: (Project) -> Unit,
     onAddProject: () -> Unit,
     onSearchClick: () -> Unit = {},
     onLogout: () -> Unit = {},
     showTopBar: Boolean = true // Added this parameter
 ) {
+    val viewModel: ProjectViewModel = remember {
+        getKoin().get<ProjectViewModel>()
+    }
     val projectsState by viewModel.projectsState.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -50,7 +53,7 @@ fun ProjectListScreen(
     }
 
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxHeight().widthIn(max = 500.dp)) {
         if (showTopBar) {
             CommonTopBar(title = "Projects", onLogout = onLogout, onSearch = onSearchClick)
         }
@@ -61,9 +64,9 @@ fun ProjectListScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Your Projects", style = MaterialTheme.typography.headlineSmall)
+                Text("", style = MaterialTheme.typography.headlineSmall)
 
-                Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center) {
+                /*Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.Center) {
                     JiraButton(
                         text = "+ New",
                         enabled = UserManager.isSuperAdmin(AuthManager.userId),
@@ -71,13 +74,23 @@ fun ProjectListScreen(
                             onAddProject()
                         }
                     )
+                }*/
+                if (UserManager.isSuperAdmin(AuthManager.userId)) {
+                    Text(
+                        "+ New Project",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand).clickable {
+                            onAddProject()
+                        })
                 }
+
 
             }
 
             Spacer(Modifier.height(16.dp))
 
-            ResourceHandler(state = projectsState, onLoading = {
+            UIStateHandler(state = projectsState, onLoading = {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(5) {
                         ProjectShimmerItem()
@@ -156,12 +169,14 @@ fun ProjectListScreen(
 
 @Composable
 fun CreateProjectScreen(
-    viewModel: ProjectViewModel = viewModel { ProjectViewModel() },
     onCreate: (Project) -> Unit,
     onBack: () -> Unit,
     onSearchClick: () -> Unit = {},
     onLogout: () -> Unit
 ) {
+    val viewModel: ProjectViewModel = remember {
+        getKoin().get<ProjectViewModel>()
+    }
     var projectName by remember { mutableStateOf("") }
     var projectCode by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }

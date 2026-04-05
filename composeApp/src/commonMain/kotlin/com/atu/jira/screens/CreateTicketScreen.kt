@@ -2,7 +2,6 @@ package com.atu.jira.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,13 +35,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.atu.jira.auth.AuthManager
 import com.atu.jira.components.CommonTopBar
 import com.atu.jira.components.DevicePosture
-import com.atu.jira.components.JiraButton
-import com.atu.jira.components.JiraButtonWithLoader
 import com.atu.jira.components.JiraCard
 import com.atu.jira.components.JiraTextField
-import com.atu.jira.components.LoadingUI
 import com.atu.jira.components.MainButton
-import com.atu.jira.components.ResourceHandler
+import com.atu.jira.components.UIStateHandler
 import com.atu.jira.components.calculateDevicePosture
 import com.atu.jira.model.Project
 import com.atu.jira.model.Status
@@ -51,9 +47,11 @@ import com.atu.jira.model.TicketType
 import com.atu.jira.model.User
 import com.atu.jira.users.UserManager
 import com.atu.jira.utils.ResourceState
+import com.atu.jira.viewmodel.ProjectViewModel
 import com.atu.jira.viewmodel.TicketViewModel
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import org.koin.mp.KoinPlatform.getKoin
 import kotlin.time.Clock
 
 /*@Composable
@@ -205,13 +203,15 @@ fun CreateTicketScreen(
 @Composable
 fun CreateTicketScreen(
     project: Project,
-    viewModel: TicketViewModel = viewModel { TicketViewModel() },
     onCreate: (Ticket) -> Unit,
     onBack: () -> Unit,
     onSearchClick: () -> Unit,
     onLogout: () -> Unit
 ) {
 
+    val viewModel: TicketViewModel = remember {
+        getKoin().get<TicketViewModel>()
+    }
     var isTabletOrDesktop = true
     val posture = calculateDevicePosture()
 
@@ -556,7 +556,7 @@ fun TicketMainForm(
     Spacer(Modifier.height(16.dp))
 
     // 🔹 Assignee
-    ResourceHandler(state = usersState) { users ->
+    UIStateHandler(state = usersState) { users ->
         UserSearchView(
             users = users,
             selectedUser = selectedUser,

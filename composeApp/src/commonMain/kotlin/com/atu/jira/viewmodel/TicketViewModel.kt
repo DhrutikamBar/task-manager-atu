@@ -75,6 +75,9 @@ class TicketViewModel : ViewModel() {
     private val _addCommentState = MutableStateFlow<ResourceState<Unit>>(ResourceState.Idle)
     val addCommentState: StateFlow<ResourceState<Unit>> = _addCommentState.asStateFlow()
 
+    private var isLoaded = false
+
+    private var lastUserId: String? = null
 
     // for storing if edit mode is enabled or not
 
@@ -111,6 +114,9 @@ class TicketViewModel : ViewModel() {
         editableTicket = original.copy()
     }
 
+    fun updateTitle(title: String) {
+        editableTicket = editableTicket?.copy(title = title)
+    }
 
     fun fetchTicketByTicketCode(ticketCode: String) {
         viewModelScope.launch {
@@ -146,7 +152,12 @@ class TicketViewModel : ViewModel() {
         }
     }
 
-    fun getAllTicketsByUserId(userId: String) {
+    fun getAllTicketsByUserId(userId: String, forceRefresh: Boolean = false) {
+        val shouldForce = forceRefresh || lastUserId != userId
+
+        if (!shouldForce && _allTicketsState.value is ResourceState.Success) return
+
+        lastUserId = userId
         viewModelScope.launch {
             _allTicketsState.value = ResourceState.Loading
             try {

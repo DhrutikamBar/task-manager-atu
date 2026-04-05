@@ -12,6 +12,7 @@ import androidx.navigation.ExperimentalBrowserHistoryApi
 import androidx.navigation.NavController
 import androidx.navigation.bindToBrowserNavigation
 import com.atu.jira.auth.AuthManager
+import com.atu.jira.koin.initKoin
 import com.atu.jira.utils.WebSessionStorage
 import kotlinx.browser.document // Requires kotlinx-browser dependency
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 fun main() {
 
     AuthManager.sessionStorage = WebSessionStorage()
+    initKoin()
     // This global flag disables the red 'Error UI' overlay
     // We target the ID string from index.html
     ComposeViewport(viewportContainerId = "ComposeTarget") {

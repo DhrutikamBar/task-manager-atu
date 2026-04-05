@@ -24,16 +24,20 @@ import com.atu.jira.components.MainButton
 import com.atu.jira.components.calculateDevicePosture
 import com.atu.jira.utils.ResourceState
 import com.atu.jira.viewmodel.AuthViewModel
+import com.atu.jira.viewmodel.TicketViewModel
 import jiraatu.composeapp.generated.resources.Res
 import jiraatu.composeapp.generated.resources.ic_atu
 import org.jetbrains.compose.resources.painterResource
+import org.koin.mp.KoinPlatform.getKoin
 
 @Composable
 fun LoginScreen(
-    viewModel: AuthViewModel = viewModel { AuthViewModel() },
     onLoginSuccess: () -> Unit,
     onSignupClick: () -> Unit
 ) {
+    val viewModel: AuthViewModel = remember {
+        getKoin().get<AuthViewModel>()
+    }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
@@ -131,10 +135,12 @@ fun LoginScreen(
 
 @Composable
 fun SignupScreen(
-    viewModel: AuthViewModel = viewModel { AuthViewModel() },
     onSignupSuccess: () -> Unit,
     onLoginClick: () -> Unit
 ) {
+    val viewModel: AuthViewModel = remember {
+        getKoin().get<AuthViewModel>()
+    }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
