@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.atu.jira.auth.AuthManager
@@ -322,6 +324,7 @@ fun TicketTypeChips(
             val isSelected = type.name == selectedType
             FilterChip(
                 selected = isSelected,
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                 onClick = { onTypeSelected(type.name) },
                 label = { Text(type.label) },
                 leadingIcon = {

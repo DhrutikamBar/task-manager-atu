@@ -42,6 +42,9 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
 
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+
     var isTabletOrDesktop = true
     val posture = calculateDevicePosture()
 
@@ -80,10 +83,15 @@ fun LoginScreen(
                     label = "Email",
                     modifier = Modifier.fillMaxWidth(),
                     enabled = authState !is ResourceState.Loading,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true
                 )
 
+                Spacer(Modifier.height(5.dp))
+                emailError?.let {
+                    Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                }
                 Spacer(Modifier.height(12.dp))
+
 
                 JiraTextField(
                     value = password,
@@ -92,16 +100,35 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = authState !is ResourceState.Loading,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true
                 )
+                Spacer(Modifier.height(5.dp))
+                passwordError?.let {
+                    Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                }
 
                 Spacer(Modifier.height(24.dp))
+
 
                 JiraButton(
                     text = if (authState is ResourceState.Loading) "Logging in..." else "Login",
                     enabled = authState !is ResourceState.Loading,
                     onClick = {
-                        viewModel.loginUser(email, password, onLoginSuccess)
+                        var isValid = true
+
+                        if (!isValidEmail(email)) {
+                            emailError = "Enter valid email"
+                            isValid = false
+                        } else emailError = null
+
+                        if (password.isBlank()) {
+                            passwordError = "Password cannot be empty"
+                            isValid = false
+                        } else passwordError = null
+
+                        if (isValid) {
+                            viewModel.loginUser(email, password, onLoginSuccess)
+                        }
                     }
                 )
 
@@ -146,6 +173,11 @@ fun SignupScreen(
     var password by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
 
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+
+
     CenterWrapper {
         Box(modifier = Modifier.size(500.dp)) {
             Column(
@@ -160,10 +192,15 @@ fun SignupScreen(
                     onValueChange = { name = it },
                     label = "Name",
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = authState !is ResourceState.Loading
+                    enabled = authState !is ResourceState.Loading, singleLine = true
                 )
+                Spacer(Modifier.height(5.dp))
+                nameError?.let {
+                    Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                }
 
                 Spacer(Modifier.height(12.dp))
+
 
                 JiraTextField(
                     value = email,
@@ -171,10 +208,14 @@ fun SignupScreen(
                     label = "Email",
                     modifier = Modifier.fillMaxWidth(),
                     enabled = authState !is ResourceState.Loading,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true
                 )
-
+                Spacer(Modifier.height(5.dp))
+                emailError?.let {
+                    Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                }
                 Spacer(Modifier.height(12.dp))
+
 
                 JiraTextField(
                     value = password,
@@ -183,16 +224,40 @@ fun SignupScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = authState !is ResourceState.Loading,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true
                 )
+                Spacer(Modifier.height(5.dp))
+                passwordError?.let {
+                    Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
+                }
 
                 Spacer(Modifier.height(24.dp))
+
 
                 JiraButton(
                     text = if (authState is ResourceState.Loading) "Creating..." else "Signup",
                     enabled = authState !is ResourceState.Loading,
                     onClick = {
-                        viewModel.signupUser(email, name, password, onSignupSuccess, onLoginClick)
+                        var isValid = true
+
+                        if (name.isBlank()) {
+                            nameError = "Name required"
+                            isValid = false
+                        } else nameError = null
+
+                        if (!isValidEmail(email)) {
+                            emailError = "Enter valid email"
+                            isValid = false
+                        } else emailError = null
+
+                        if (!isValidPassword(password)) {
+                            passwordError = "Min 6 characters required"
+                            isValid = false
+                        } else passwordError = null
+
+                        if (isValid) {
+                            viewModel.signupUser(email, name, password, onSignupSuccess, onLoginClick)
+                        }
                     }
                 )
 
@@ -220,4 +285,13 @@ fun SignupScreen(
     }
 
 
+}
+
+
+fun isValidEmail(email: String): Boolean {
+    return Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$").matches(email)
+}
+
+fun isValidPassword(password: String): Boolean {
+    return password.length >= 6
 }
